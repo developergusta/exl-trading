@@ -1,6 +1,7 @@
 "use client";
 
 import { MobileHeader } from "@/components/community/mobile-header";
+import { MobileNavigation } from "@/components/community/mobile-navigation";
 import { UserProfile } from "@/components/community/user-profile";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
 import { useAuth } from "@/hooks/use-auth";
@@ -43,9 +44,10 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-[#0E0E0E]">
       <MobileHeader title="Perfil" showNotifications={false} />
-      <div className="p-4 bg-[#0E0E0E] min-h-screen">
+      <div className="p-4 bg-[#0E0E0E] min-h-screen pb-20">
         <UserProfile />
       </div>
+      <MobileNavigation />
       <OfflineIndicator />
     </div>
   );

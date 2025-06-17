@@ -2,6 +2,7 @@
 
 import { CompanyFeed } from "@/components/community/company-feed";
 import { MobileHeader } from "@/components/community/mobile-header";
+import { MobileNavigation } from "@/components/community/mobile-navigation";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
@@ -43,9 +44,10 @@ export default function FeedPage() {
   return (
     <div className="min-h-screen bg-[#0E0E0E]">
       <MobileHeader title="Atualizações" />
-      <div className="p-4 bg-[#0E0E0E] min-h-screen">
+      <div className="p-4 bg-[#0E0E0E] min-h-screen pb-20">
         <CompanyFeed />
       </div>
+      <MobileNavigation />
       <OfflineIndicator />
     </div>
   );
