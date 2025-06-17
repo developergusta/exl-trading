@@ -14,6 +14,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isLoading: boolean;
   login: (
     email: string,
     password: string,
@@ -35,6 +36,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (isSupabaseConfigured) {
@@ -60,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAuthenticated(!!user);
       });
 
+      setIsLoading(false);
       return unsubscribe;
     } catch (error) {
       console.error("Error initializing Supabase auth:", error);
@@ -98,6 +101,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("users", JSON.stringify([...users, adminUser]));
       localStorage.setItem("passwords", JSON.stringify(passwords));
     }
+
+    setIsLoading(false);
   };
 
   const login = async (
@@ -300,6 +305,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isAuthenticated,
         isAdmin,
+        isLoading,
         login,
         register,
         logout,
