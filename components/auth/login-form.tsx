@@ -1,60 +1,80 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAuth } from "@/hooks/use-auth"
-import { Eye, EyeOff, ArrowLeft } from "lucide-react"
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/use-auth";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
 
 interface LoginFormProps {
-  onSwitchToRegister: () => void
-  onSwitchToAdmin?: () => void
-  onBack?: () => void
-  isAdminMode?: boolean
+  onSwitchToRegister: () => void;
+  onSwitchToAdmin?: () => void;
+  onBack?: () => void;
+  isAdminMode?: boolean;
 }
 
-export function LoginForm({ onSwitchToRegister, onSwitchToAdmin, onBack, isAdminMode = false }: LoginFormProps) {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+export function LoginForm({
+  onSwitchToRegister,
+  onSwitchToAdmin,
+  onBack,
+  isAdminMode = false,
+}: LoginFormProps) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const { login } = useAuth()
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
     try {
-      const success = await login(email, password, isAdminMode)
+      const { success, error } = await login(email, password, isAdminMode);
       if (!success) {
-        setError(isAdminMode ? "Credenciais de administrador inválidas" : "Email ou senha incorretos")
+        setError(error || "Erro ao fazer login. Tente novamente.");
       }
     } catch (err) {
-      setError("Erro ao fazer login. Tente novamente.")
+      setError("Erro ao fazer login. Tente novamente.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <Card className="bg-[#1C1C1C] border-[#2C2C2C]">
       <CardHeader>
         <div className="flex items-center gap-2">
           {isAdminMode && onBack && (
-            <Button onClick={onBack} variant="ghost" size="sm" className="text-[#BBF717] p-0">
+            <Button
+              onClick={onBack}
+              variant="ghost"
+              size="sm"
+              className="text-[#BBF717] p-0"
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
           <div>
-            <CardTitle className="text-white">{isAdminMode ? "Acesso Administrativo" : "Entrar"}</CardTitle>
+            <CardTitle className="text-white">
+              {isAdminMode ? "Acesso Administrativo" : "Entrar"}
+            </CardTitle>
             <CardDescription className="text-gray-400">
-              {isAdminMode ? "Faça login como administrador" : "Acesse sua conta EXL Trading"}
+              {isAdminMode
+                ? "Faça login como administrador"
+                : "Acesse sua conta EXL Trading"}
             </CardDescription>
           </div>
         </div>
@@ -62,7 +82,9 @@ export function LoginForm({ onSwitchToRegister, onSwitchToAdmin, onBack, isAdmin
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Email
+            </label>
             <Input
               type="email"
               value={email}
@@ -74,7 +96,9 @@ export function LoginForm({ onSwitchToRegister, onSwitchToAdmin, onBack, isAdmin
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Senha</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Senha
+            </label>
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
@@ -99,7 +123,9 @@ export function LoginForm({ onSwitchToRegister, onSwitchToAdmin, onBack, isAdmin
           </div>
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500 text-red-400 px-3 py-2 rounded text-sm">{error}</div>
+            <div className="bg-red-500/10 border border-red-500 text-red-400 px-3 py-2 rounded text-sm">
+              {error}
+            </div>
           )}
 
           <Button
@@ -107,20 +133,32 @@ export function LoginForm({ onSwitchToRegister, onSwitchToAdmin, onBack, isAdmin
             disabled={isLoading}
             className="w-full bg-[#BBF717] text-black hover:bg-[#9FD615] font-bold"
           >
-            {isLoading ? "Entrando..." : isAdminMode ? "Entrar como Admin" : "Entrar"}
+            {isLoading
+              ? "Entrando..."
+              : isAdminMode
+              ? "Entrar como Admin"
+              : "Entrar"}
           </Button>
 
           {!isAdminMode && (
             <div className="text-center space-y-2">
               <p className="text-sm text-gray-400">
                 Não tem uma conta?{" "}
-                <button type="button" onClick={onSwitchToRegister} className="text-[#BBF717] hover:underline">
+                <button
+                  type="button"
+                  onClick={onSwitchToRegister}
+                  className="text-[#BBF717] hover:underline"
+                >
                   Cadastre-se
                 </button>
               </p>
               {onSwitchToAdmin && (
                 <p className="text-sm text-gray-400">
-                  <button type="button" onClick={onSwitchToAdmin} className="text-[#BBF717] hover:underline">
+                  <button
+                    type="button"
+                    onClick={onSwitchToAdmin}
+                    className="text-[#BBF717] hover:underline"
+                  >
                     Acesso Administrativo
                   </button>
                 </p>
@@ -130,5 +168,5 @@ export function LoginForm({ onSwitchToRegister, onSwitchToAdmin, onBack, isAdmin
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }
