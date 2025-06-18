@@ -40,60 +40,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    console.log("AuthProvider: Initializing auth...", { isSupabaseConfigured });
     if (isSupabaseConfigured) {
       // Initialize with Supabase
       initializeSupabaseAuth();
     } else {
       // Fallback to localStorage
-      console.log("AuthProvider: Using localStorage fallback");
       initializeLocalAuth();
     }
   }, []);
 
   const initializeSupabaseAuth = async () => {
     try {
-      console.log("AuthProvider: Initializing Supabase auth...");
       const currentUser = await authService.getCurrentUser();
       if (currentUser) {
-        console.log("AuthProvider: Found current user:", currentUser);
         setUser(currentUser);
         setIsAuthenticated(true);
       } else {
-        console.log("AuthProvider: No current user found");
       }
 
       // Listen to auth state changes
       const unsubscribe = authService.onAuthStateChange((user) => {
-        console.log("AuthProvider: Auth state changed:", user);
         setUser(user);
         setIsAuthenticated(!!user);
       });
 
-      console.log(
-        "AuthProvider: Supabase auth initialized, setting loading false"
-      );
       setIsLoading(false);
       return unsubscribe;
     } catch (error) {
-      console.error("Error initializing Supabase auth:", error);
-      console.log("AuthProvider: Falling back to localStorage");
       initializeLocalAuth();
     }
   };
 
   const initializeLocalAuth = () => {
-    console.log("AuthProvider: Initializing localStorage auth...");
-
     // Check if user is logged in on app start
     const savedUser = localStorage.getItem("currentUser");
     if (savedUser) {
-      console.log("AuthProvider: Found saved user:", savedUser);
       const userData = JSON.parse(savedUser);
       setUser(userData);
       setIsAuthenticated(true);
     } else {
-      console.log("AuthProvider: No saved user found");
     }
 
     // Initialize admin user if not exists
@@ -118,14 +103,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       localStorage.setItem("users", JSON.stringify([...users, adminUser]));
       localStorage.setItem("passwords", JSON.stringify(passwords));
-      console.log("AuthProvider: Admin user created");
     } else {
-      console.log("AuthProvider: Admin user already exists");
     }
 
-    console.log(
-      "AuthProvider: localStorage auth initialized, setting loading false"
-    );
     setIsLoading(false);
   };
 
@@ -134,12 +114,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     isAdminMode = false
   ): Promise<{ success: boolean; error?: string }> => {
-    console.log("AuthProvider: Login attempt", {
-      email,
-      isAdminMode,
-      isSupabaseConfigured,
-    });
-
     if (isSupabaseConfigured) {
       try {
         const result = await authService.login(
@@ -169,9 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: "Erro ao fazer login" };
       }
     } else {
-      console.log("AuthProvider: Using localStorage login");
       const success = loginWithLocalStorage(email, password, isAdminMode);
-      console.log("AuthProvider: localStorage login result", success);
       return {
         success,
         error: success ? undefined : "Email ou senha incorretos",
@@ -184,50 +156,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     isAdminMode = false
   ): boolean => {
-    console.log("AuthProvider: loginWithLocalStorage called", {
-      email,
-      isAdminMode,
-    });
-
     const users: User[] = JSON.parse(localStorage.getItem("users") || "[]");
     const passwords = JSON.parse(localStorage.getItem("passwords") || "{}");
 
-    console.log(
-      "AuthProvider: Available users:",
-      users.map((u) => ({ email: u.email, role: u.role, status: u.status }))
-    );
-    console.log("AuthProvider: Available passwords:", Object.keys(passwords));
-
     const foundUser = users.find((u) => u.email === email);
-    console.log("AuthProvider: Found user:", foundUser);
 
     if (!foundUser || passwords[email] !== password) {
-      console.log("AuthProvider: User not found or wrong password", {
-        userFound: !!foundUser,
-        passwordMatch: passwords[email] === password,
-        expectedPassword: passwords[email],
-        providedPassword: password,
-      });
       return false;
     }
 
     if (isAdminMode && foundUser.role !== "admin") {
-      console.log("AuthProvider: Admin mode but user is not admin");
       return false;
     }
 
     if (!isAdminMode && foundUser.status !== "approved") {
       // Allow login for pending users to show status message
-      console.log(
-        "AuthProvider: User status is pending, allowing login to show status"
-      );
+
       setUser(foundUser);
       setIsAuthenticated(true);
       localStorage.setItem("currentUser", JSON.stringify(foundUser));
       return true;
     }
 
-    console.log("AuthProvider: Login successful");
     setUser(foundUser);
     setIsAuthenticated(true);
     localStorage.setItem("currentUser", JSON.stringify(foundUser));

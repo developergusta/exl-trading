@@ -62,6 +62,7 @@ export function UserManagement() {
 
   const loadUsers = async () => {
     const allUsers = await getAllUsers();
+    console.log("allUsers", allUsers);
     setUsers(allUsers);
   };
 
@@ -325,7 +326,7 @@ export function UserManagement() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
             <Users className="w-5 h-5" />
-            Gerenciamento de Usuários ({filteredUsers.length})
+            Gerenciamento de Usuários ({users.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -402,7 +403,7 @@ export function UserManagement() {
                           onClick={() => handleEditUser(user)}
                           size="sm"
                           variant="outline"
-                          className="border-[#555] text-white hover:bg-[#2C2C2C] p-1 h-8 w-8"
+                          className="border-[#555] bg-[#2C2C2C] text-white p-1 h-8 w-8"
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -410,7 +411,7 @@ export function UserManagement() {
                           onClick={() => handleDeleteUser(user.id)}
                           size="sm"
                           variant="outline"
-                          className="border-red-500 text-red-400 hover:bg-red-500 hover:text-white p-1 h-8 w-8"
+                          className="border-red-500 bg-red-500 text-white p-1 h-8 w-8"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
