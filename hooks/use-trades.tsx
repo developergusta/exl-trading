@@ -1,76 +1,140 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
+import { useAuth } from "@/hooks/use-auth";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { useEffect, useState } from "react";
 
 export interface Trade {
-  date: string
-  pl: string
-  details?: {
-    type: string
-    asset: string
-    contracts: string
-    strategy: string
-    tradePl: string
-  }
+  id?: string;
+  date: string;
+  pl: string;
+  user_id?: string;
 }
 
 export function useTrades() {
-  const [trades, setTrades] = useState<Trade[]>([])
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const { user } = useAuth();
 
+  // Buscar trades do Supabase
   useEffect(() => {
-    const savedTrades = localStorage.getItem("trades")
-    if (savedTrades) {
-      setTrades(JSON.parse(savedTrades))
+    const fetchTrades = async () => {
+      if (isSupabaseConfigured && supabase && user) {
+        const { data, error } = await supabase
+          .from("trades")
+          .select("id, date, pl")
+          .eq("user_id", user.id)
+          .order("date", { ascending: true });
+        if (!error && data) {
+          setTrades(data.map((t) => ({ ...t, pl: String(t.pl) })));
+        }
+      }
+    };
+    fetchTrades();
+  }, [user]);
+
+  // Adicionar trade no Supabase
+  const addTrade = async (trade: Trade) => {
+    if (!isSupabaseConfigured || !supabase || !user) return;
+
+    // Insere novo trade
+    const { data, error } = await supabase.from("trades").insert({
+      user_id: user.id,
+      date: trade.date,
+      pl: trade.pl,
+    });
+
+    if (!error) {
+      // Atualiza lista
+      const { data: updatedTrades } = await supabase
+        .from("trades")
+        .select("id, date, pl")
+        .eq("user_id", user.id)
+        .order("date", { ascending: true });
+
+      if (updatedTrades) {
+        setTrades(updatedTrades.map((t) => ({ ...t, pl: String(t.pl) })));
+      }
     }
-  }, [])
-
-  const addTrade = (trade: Trade) => {
-    const existingIndex = trades.findIndex((t) => t.date === trade.date)
-    let newTrades: Trade[]
-
-    if (existingIndex >= 0) {
-      newTrades = [...trades]
-      newTrades[existingIndex] = trade
-    } else {
-      newTrades = [...trades, trade]
-    }
-
-    setTrades(newTrades)
-    localStorage.setItem("trades", JSON.stringify(newTrades))
-  }
+  };
 
   const getTotalPL = () => {
-    return trades.reduce((total, trade) => total + Number.parseFloat(trade.pl), 0)
-  }
+    return trades.reduce(
+      (total, trade) => total + Number.parseFloat(trade.pl),
+      0
+    );
+  };
 
   const getTotalTrades = () => {
-    return trades.length
-  }
+    return trades.length;
+  };
 
   const getProfitDays = () => {
-    return trades.filter((trade) => Number.parseFloat(trade.pl) > 0).length
-  }
+    // Agrupa trades por dia e soma os PLs
+    const dailyPL = trades.reduce((acc, trade) => {
+      acc[trade.date] = (acc[trade.date] || 0) + Number.parseFloat(trade.pl);
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Conta dias com PL positivo
+    return Object.values(dailyPL).filter((pl) => pl > 0).length;
+  };
 
   const getLossDays = () => {
-    return trades.filter((trade) => Number.parseFloat(trade.pl) < 0).length
-  }
+    // Agrupa trades por dia e soma os PLs
+    const dailyPL = trades.reduce((acc, trade) => {
+      acc[trade.date] = (acc[trade.date] || 0) + Number.parseFloat(trade.pl);
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Conta dias com PL negativo
+    return Object.values(dailyPL).filter((pl) => pl < 0).length;
+  };
 
   const getWinRate = () => {
-    if (trades.length === 0) return "0.00"
-    return ((getProfitDays() / trades.length) * 100).toFixed(2)
-  }
+    // Agrupa trades por dia e soma os PLs
+    const dailyPL = trades.reduce((acc, trade) => {
+      acc[trade.date] = (acc[trade.date] || 0) + Number.parseFloat(trade.pl);
+      return acc;
+    }, {} as Record<string, number>);
+
+    const totalDays = Object.keys(dailyPL).length;
+    if (totalDays === 0) return "0.00";
+
+    const profitDays = Object.values(dailyPL).filter((pl) => pl > 0).length;
+    return ((profitDays / totalDays) * 100).toFixed(2);
+  };
 
   const getBestDay = () => {
-    if (trades.length === 0) return "-"
-    const best = trades.reduce((max, trade) => (Number.parseFloat(trade.pl) > Number.parseFloat(max.pl) ? trade : max))
-    return Number.parseFloat(best.pl).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-  }
+    // Agrupa trades por dia e soma os PLs
+    const dailyPL = trades.reduce((acc, trade) => {
+      acc[trade.date] = (acc[trade.date] || 0) + Number.parseFloat(trade.pl);
+      return acc;
+    }, {} as Record<string, number>);
+
+    if (Object.keys(dailyPL).length === 0) return "-";
+
+    const bestPL = Math.max(...Object.values(dailyPL));
+    return bestPL.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+  };
 
   const getWorstDay = () => {
-    if (trades.length === 0) return "-"
-    const worst = trades.reduce((min, trade) => (Number.parseFloat(trade.pl) < Number.parseFloat(min.pl) ? trade : min))
-    return Number.parseFloat(worst.pl).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-  }
+    // Agrupa trades por dia e soma os PLs
+    const dailyPL = trades.reduce((acc, trade) => {
+      acc[trade.date] = (acc[trade.date] || 0) + Number.parseFloat(trade.pl);
+      return acc;
+    }, {} as Record<string, number>);
+
+    if (Object.keys(dailyPL).length === 0) return "-";
+
+    const worstPL = Math.min(...Object.values(dailyPL));
+    return worstPL.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+  };
 
   return {
     trades,
@@ -82,5 +146,5 @@ export function useTrades() {
     getWinRate,
     getBestDay,
     getWorstDay,
-  }
+  };
 }

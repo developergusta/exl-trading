@@ -288,6 +288,48 @@ export class AuthService {
     }
   }
 
+  // Get all users (admin only)
+  async getAllUsers(): Promise<User[]> {
+    console.log("isSupabaseConfigured", isSupabaseConfigured);
+    if (!isSupabaseConfigured || !supabase) return [];
+
+    try {
+      const { data: profiles, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      console.log("profiles", profiles);
+
+      if (error || !profiles) return [];
+
+      // Get email addresses for each user
+      const users: User[] = [];
+      for (const profile of profiles) {
+        if (profile.role === "admin") continue;
+        const { data: authData } = await supabase.auth.admin.getUserById(
+          profile.id
+        );
+        if (authData.user) {
+          users.push({
+            id: profile.id,
+            name: profile.name,
+            email: authData.user.email!,
+            phone: profile.phone,
+            experience: profile.experience,
+            status: profile.status,
+            role: profile.role,
+            createdAt: profile.created_at,
+          });
+        }
+      }
+
+      return users;
+    } catch (error) {
+      return [];
+    }
+  }
+
   // Listen to auth state changes
   onAuthStateChange(callback: (user: User | null) => void) {
     if (!isSupabaseConfigured || !supabase) return () => {};

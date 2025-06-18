@@ -1,13 +1,14 @@
-import type React from "react"
-import type { Metadata, Viewport } from "next"
-import { Inter } from "next/font/google"
-import "./globals.css"
-import { AuthProvider } from "@/hooks/use-auth"
-import { CommunityProvider } from "@/hooks/use-community"
-import { CompanyFeedProvider } from "@/hooks/use-company-feed"
-import { AcademyProvider } from "@/hooks/use-academy"
+import { AcademyProvider } from "@/hooks/use-academy";
+import { AuthProvider } from "@/hooks/use-auth";
+import { CommunityProvider } from "@/hooks/use-community";
+import { CompanyFeedProvider } from "@/hooks/use-company-feed";
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
+import Script from "next/script";
+import type React from "react";
+import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "EXL Trading Hub",
@@ -32,8 +33,8 @@ export const metadata: Metadata = {
     title: "EXL Trading Hub",
     description: "Conjunto completo de ferramentas para traders profissionais",
   },
-    generator: 'v0.dev'
-}
+  generator: "v0.dev",
+};
 
 export const viewport: Viewport = {
   themeColor: "#BBF717",
@@ -42,12 +43,12 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-}
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="pt-BR">
@@ -60,6 +61,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="msapplication-TileColor" content="#BBF717" />
         <meta name="msapplication-tap-highlight" content="no" />
+        <Script src="/register-sw.js" strategy="lazyOnload" />
       </head>
       <body className={inter.className}>
         <AuthProvider>
@@ -71,5 +73,5 @@ export default function RootLayout({
         </AuthProvider>
       </body>
     </html>
-  )
+  );
 }

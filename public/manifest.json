@@ -1,0 +1,17 @@
+{
+  "name": "EXL Trading",
+  "short_name": "EXL Trading",
+  "description": "Trading platform for analysis and management",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#BBF717",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

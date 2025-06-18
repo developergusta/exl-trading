@@ -227,3 +227,39 @@ CREATE TRIGGER set_course_content_updated_at
   BEFORE UPDATE ON public.course_content
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_updated_at();
+
+
+-- Primeiro, remover a tabela existente
+DROP TABLE IF EXISTS public.trades;
+
+-- Criar a nova versão simplificada
+CREATE TABLE IF NOT EXISTS public.trades (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  date DATE NOT NULL,
+  pl DECIMAL(10,2) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS on trades
+ALTER TABLE public.trades ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for trades table
+CREATE POLICY "Users can view their own trades" ON public.trades
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own trades" ON public.trades
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own trades" ON public.trades
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own trades" ON public.trades
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Create trigger for updated_at
+CREATE TRIGGER set_trades_updated_at
+  BEFORE UPDATE ON public.trades
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_updated_at();

@@ -1,109 +1,59 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useTrades } from "@/hooks/use-trades"
+import { AlertDialog } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useTrades } from "@/hooks/use-trades";
+import { useState } from "react";
 
 export function TradeForm() {
-  const [date, setDate] = useState("")
-  const [pl, setPl] = useState("")
-  const [tradeType, setTradeType] = useState("buy")
-  const [asset, setAsset] = useState("")
-  const [contracts, setContracts] = useState("")
-  const [strategy, setStrategy] = useState("")
-  const [tradePl, setTradePl] = useState("")
+  const [date, setDate] = useState("");
+  const [pl, setPl] = useState("");
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
 
-  const { addTrade } = useTrades()
+  const { addTrade } = useTrades();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!date || pl === "") {
-      alert("Insira a data e o P&L.")
-      return
+      setAlertMessage("Insira a data e o P&L.");
+      setAlertOpen(true);
+      return;
     }
 
-    addTrade({
+    await addTrade({
       date,
       pl,
-      details: {
-        type: tradeType,
-        asset,
-        contracts,
-        strategy,
-        tradePl,
-      },
-    })
+    });
 
     // Reset form
-    setDate("")
-    setPl("")
-    setTradeType("buy")
-    setAsset("")
-    setContracts("")
-    setStrategy("")
-    setTradePl("")
+    setDate("");
+    setPl("");
 
-    alert("Salvo com sucesso!")
-  }
+    setAlertMessage("Salvo com sucesso!");
+    setAlertOpen(true);
+  };
 
   return (
     <div className="max-w-2xl mx-auto bg-[#1C1C1C] p-5 rounded-lg">
-      <h2 className="text-2xl font-bold text-[#BBF717] mb-5">Inserir Operação</h2>
+      <h2 className="text-2xl font-bold text-[#BBF717] mb-5">
+        Inserir Operação
+      </h2>
 
       <div className="space-y-4">
-        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full p-2 text-black" />
+        <Input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="w-full p-2 text-white"
+        />
 
         <Input
           type="number"
           placeholder="Resultado líquido do dia (ex: 350 ou -120)"
           value={pl}
           onChange={(e) => setPl(e.target.value)}
-          className="w-full p-2 text-black"
-        />
-
-        <h3 className="text-lg font-bold text-[#BBF717] mt-6 mb-3">Detalhar Trade (opcional)</h3>
-
-        <Select value={tradeType} onValueChange={setTradeType}>
-          <SelectTrigger className="w-full text-black">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="buy">Tipo: Compra</SelectItem>
-            <SelectItem value="sell">Tipo: Venda</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Input
-          type="text"
-          placeholder="Ativo"
-          value={asset}
-          onChange={(e) => setAsset(e.target.value)}
-          className="w-full p-2 text-black"
-        />
-
-        <Input
-          type="number"
-          placeholder="Contratos/Lotes"
-          value={contracts}
-          onChange={(e) => setContracts(e.target.value)}
-          className="w-full p-2 text-black"
-        />
-
-        <Input
-          type="text"
-          placeholder="Estratégia"
-          value={strategy}
-          onChange={(e) => setStrategy(e.target.value)}
-          className="w-full p-2 text-black"
-        />
-
-        <Input
-          type="number"
-          placeholder="P&L da operação"
-          value={tradePl}
-          onChange={(e) => setTradePl(e.target.value)}
-          className="w-full p-2 text-black"
+          className="w-full p-2 text-white"
         />
 
         <Button
@@ -113,6 +63,12 @@ export function TradeForm() {
           Salvar
         </Button>
       </div>
+
+      <AlertDialog
+        open={alertOpen}
+        onOpenChange={setAlertOpen}
+        description={alertMessage}
+      />
     </div>
-  )
+  );
 }
