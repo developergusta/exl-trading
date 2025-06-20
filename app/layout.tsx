@@ -6,6 +6,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
 import type React from "react";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -71,6 +72,7 @@ export default function RootLayout({
             </CompanyFeedProvider>
           </CommunityProvider>
         </AuthProvider>
+        <Toaster richColors position="top-right" />
       </body>
     </html>
   );

@@ -263,3 +263,53 @@ CREATE TRIGGER set_trades_updated_at
   BEFORE UPDATE ON public.trades
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_updated_at();
+
+-- Create company posts table
+CREATE TABLE IF NOT EXISTS public.company_posts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  content TEXT,
+  image_url TEXT,
+  author_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS on company_posts
+ALTER TABLE public.company_posts ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for company_posts table
+CREATE POLICY "Everyone can view company posts" ON public.company_posts
+  FOR SELECT USING (true);
+
+CREATE POLICY "Only admins can create company posts" ON public.company_posts
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.profiles 
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+CREATE POLICY "Only admins can update company posts" ON public.company_posts
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles 
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+CREATE POLICY "Only admins can delete company posts" ON public.company_posts
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles 
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Create trigger for updated_at
+CREATE TRIGGER set_company_posts_updated_at
+  BEFORE UPDATE ON public.company_posts
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_updated_at();
+
+
+  

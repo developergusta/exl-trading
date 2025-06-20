@@ -1,105 +1,179 @@
-"use client"
+"use client";
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { supabase } from "@/lib/supabase";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import { v4 as uuidv4 } from "uuid";
 
 interface CompanyPost {
-  id: string
-  content: string
-  authorName: string
-  authorAvatar: string
-  type: "company"
-  image?: string
-  createdAt: string
+  id: string;
+  content: string | null;
+  image_url: string | null;
+  created_at: string;
+  author_id: string;
 }
+
+type CreatePostInput = {
+  content?: string | null;
+  image?: File | null;
+};
 
 interface CompanyFeedContextType {
-  posts: CompanyPost[]
-  addPost: (post: Omit<CompanyPost, "id" | "createdAt">) => Promise<void>
+  posts: CompanyPost[];
+  loading: boolean;
+  addPost: (input: CreatePostInput) => Promise<void>;
 }
 
-const CompanyFeedContext = createContext<CompanyFeedContextType | undefined>(undefined)
+const CompanyFeedContext = createContext<CompanyFeedContextType | undefined>(
+  undefined
+);
 
 export function CompanyFeedProvider({ children }: { children: ReactNode }) {
-  const [posts, setPosts] = useState<CompanyPost[]>([])
+  const [posts, setPosts] = useState<CompanyPost[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load posts from localStorage
-    const savedPosts = localStorage.getItem("companyPosts")
-    if (savedPosts) {
-      setPosts(JSON.parse(savedPosts))
-    } else {
-      // Initialize with sample posts
-      const samplePosts: CompanyPost[] = [
-        {
-          id: "1",
-          content: `🚀 Nova funcionalidade disponível!
+    fetchPosts();
+  }, []);
 
-Acabamos de lançar o Simulador Monte Carlo no EXL Trading Hub. Agora você pode:
+  const fetchPosts = async () => {
+    try {
+      if (!supabase) throw new Error("Supabase client not initialized");
 
-✅ Simular cenários futuros baseados em suas estatísticas
-✅ Visualizar curvas de equity potenciais
-✅ Analisar distribuição de resultados
-✅ Tomar decisões mais informadas
+      const { data, error } = await supabase
+        .from("company_posts")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-Acesse agora mesmo através do hub principal!
-
-#EXLTrading #MonteCarlo #Trading`,
-          authorName: "EXL Trading",
-          authorAvatar: "/images/exl-logo.png",
-          type: "company",
-          createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-        },
-        {
-          id: "2",
-          content: `📊 Atualização do Sistema
-
-Implementamos melhorias significativas na plataforma:
-
-🔧 Performance otimizada em 40%
-🔧 Nova interface para gestão de risco
-🔧 Correções de bugs reportados
-🔧 Backup automático dos dados
-
-A atualização já está ativa para todos os usuários. Qualquer dúvida, entre em contato conosco!`,
-          authorName: "EXL Trading",
-          authorAvatar: "/images/exl-logo.png",
-          type: "company",
-          createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
-        },
-      ]
-      setPosts(samplePosts)
-      localStorage.setItem("companyPosts", JSON.stringify(samplePosts))
+      if (error) throw error;
+      setPosts(data || []);
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+    } finally {
+      setLoading(false);
     }
-  }, [])
+  };
 
-  const addPost = async (postData: Omit<CompanyPost, "id" | "createdAt">) => {
-    const newPost: CompanyPost = {
-      ...postData,
-      id: `company-post-${Date.now()}`,
-      createdAt: new Date().toISOString(),
+  const uploadImage = async (file: File) => {
+    try {
+      if (!supabase) throw new Error("Supabase client not initialized");
+
+      console.log("Starting image upload...");
+      console.log("File:", file.name, file.type, file.size);
+
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${uuidv4()}.${fileExt}`;
+      const filePath = `company-posts/${fileName}`;
+
+      console.log("Uploading to path:", filePath);
+
+      try {
+        const { error: uploadError, data: uploadData } = await supabase.storage
+          .from("publico")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: file.type,
+          });
+
+        if (uploadError) {
+          console.error("Upload error details:", uploadError);
+          throw uploadError;
+        }
+
+        console.log("Upload successful:", uploadData);
+      } catch (error) {
+        console.error("Error during upload:", error);
+      }
+
+      try {
+        const { data } = supabase.storage
+          .from("publico")
+          .getPublicUrl(filePath);
+
+        console.log("Generated public URL:", data.publicUrl);
+        return data.publicUrl;
+      } catch (error) {
+        console.error("Error getting public URL:", error);
+      }
+    } catch (error) {
+      console.error("Error in uploadImage:", error);
     }
+  };
 
-    const updatedPosts = [newPost, ...posts]
-    setPosts(updatedPosts)
-    localStorage.setItem("companyPosts", JSON.stringify(updatedPosts))
-  }
+  const addPost = async ({ content, image }: CreatePostInput) => {
+    try {
+      if (!supabase) throw new Error("Supabase client not initialized");
+      if (!content?.trim() && !image) {
+        throw new Error("Post must have either content or image");
+      }
+
+      let imageUrl = null;
+      if (image) {
+        console.log("Attempting to upload image...");
+        imageUrl = await uploadImage(image);
+        console.log("Image upload completed, URL:", imageUrl);
+      }
+
+      const user = await supabase.auth.getUser();
+      if (!user.data.user?.id) {
+        throw new Error("User not authenticated");
+      }
+
+      console.log("Creating post with data:", {
+        content: content?.trim() || null,
+        image_url: imageUrl,
+        author_id: user.data.user.id,
+      });
+
+      const { error, data } = await supabase
+        .from("company_posts")
+        .insert([
+          {
+            content: content?.trim() || null,
+            image_url: imageUrl,
+            author_id: user.data.user.id,
+          },
+        ])
+        .select();
+
+      if (error) {
+        console.error("Error inserting post:", error);
+        throw error;
+      }
+
+      console.log("Post created successfully:", data);
+
+      // Refresh posts after adding new one
+      await fetchPosts();
+    } catch (error) {
+      console.error("Error in addPost:", error);
+      throw error;
+    }
+  };
 
   return (
     <CompanyFeedContext.Provider
       value={{
         posts,
+        loading,
         addPost,
       }}
     >
       {children}
     </CompanyFeedContext.Provider>
-  )
+  );
 }
 
 export function useCompanyFeed() {
-  const context = useContext(CompanyFeedContext)
+  const context = useContext(CompanyFeedContext);
   if (context === undefined) {
-    throw new Error("useCompanyFeed must be used within a CompanyFeedProvider")
+    throw new Error("useCompanyFeed must be used within a CompanyFeedProvider");
   }
-  return context
+  return context;
 }
