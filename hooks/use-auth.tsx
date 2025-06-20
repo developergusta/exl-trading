@@ -96,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status: "approved",
         role: "admin",
         createdAt: new Date().toISOString(),
+        avatar_url: null,
       };
 
       const passwords = JSON.parse(localStorage.getItem("passwords") || "{}");
@@ -197,6 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           password: userData.password,
           phone: userData.phone || undefined,
           experience: userData.experience,
+          avatar_url: null,
         };
 
         const result = await authService.register(registerData);
@@ -233,6 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status: "pending",
       role: "user",
       createdAt: new Date().toISOString(),
+      avatar_url: null,
     };
 
     users.push(newUser);

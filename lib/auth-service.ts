@@ -7,6 +7,7 @@ export interface RegisterData {
   password: string;
   phone?: string;
   experience: string;
+  avatar_url: string | null;
 }
 
 export interface LoginData {
@@ -18,7 +19,7 @@ export class AuthService {
   // Register a new user
   async register(
     data: RegisterData
-  ): Promise<{ success: boolean; error?: string; user?: User }> {
+  ): Promise<{ success: boolean; error?: string }> {
     if (!isSupabaseConfigured || !supabase) {
       return { success: false, error: "Supabase não configurado" };
     }
@@ -64,19 +65,7 @@ export class AuthService {
         return { success: false, error: "Erro ao criar perfil do usuário" };
       }
 
-      const user: User = {
-        id: authData.user.id,
-        name: profile.name,
-        email: data.email,
-        phone: profile.phone,
-        experience: profile.experience,
-        status: profile.status,
-        role: profile.role,
-        createdAt: profile.created_at,
-        avatar_url: null,
-      };
-
-      return { success: true, user };
+      return { success: true };
     } catch (error) {
       return { success: false, error: "Erro interno do servidor" };
     }

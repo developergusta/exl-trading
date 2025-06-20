@@ -1,16 +1,22 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAuth } from "@/hooks/use-auth"
-import { Eye, EyeOff } from "lucide-react"
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/use-auth";
+import { Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
 
 interface RegisterFormProps {
-  onSwitchToLogin: () => void
+  onSwitchToLogin: () => void;
 }
 
 export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
@@ -21,37 +27,39 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
     confirmPassword: "",
     phone: "",
     experience: "",
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState(false)
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
-  const { register } = useAuth()
+  const { register } = useAuth();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
-    }))
-  }
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
     if (formData.password !== formData.confirmPassword) {
-      setError("As senhas não coincidem")
-      setIsLoading(false)
-      return
+      setError("As senhas não coincidem");
+      setIsLoading(false);
+      return;
     }
 
     if (formData.password.length < 6) {
-      setError("A senha deve ter pelo menos 6 caracteres")
-      setIsLoading(false)
-      return
+      setError("A senha deve ter pelo menos 6 caracteres");
+      setIsLoading(false);
+      return;
     }
 
     try {
@@ -61,19 +69,20 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
         password: formData.password,
         phone: formData.phone,
         experience: formData.experience,
-      })
+        avatar_url: null,
+      });
 
       if (success) {
-        setSuccess(true)
+        setSuccess(true);
       } else {
-        setError("Email já cadastrado ou erro no servidor")
+        setError("Email já cadastrado ou erro no servidor");
       }
     } catch (err) {
-      setError("Erro ao criar conta. Tente novamente.")
+      setError("Erro ao criar conta. Tente novamente.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   if (success) {
     return (
@@ -81,22 +90,38 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
         <CardContent className="pt-6">
           <div className="text-center">
             <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-8 h-8 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-white mb-2">Cadastro Realizado!</h3>
+            <h3 className="text-xl font-bold text-white mb-2">
+              Cadastro Realizado!
+            </h3>
             <p className="text-gray-300 mb-4">
-              Sua conta foi criada com sucesso e está aguardando aprovação do administrador. Você receberá acesso assim
-              que sua conta for liberada.
+              Sua conta foi criada com sucesso e está aguardando aprovação do
+              administrador. Você receberá acesso assim que sua conta for
+              liberada.
             </p>
-            <Button onClick={onSwitchToLogin} className="bg-[#BBF717] text-black hover:bg-[#9FD615] font-bold">
+            <Button
+              onClick={onSwitchToLogin}
+              className="bg-[#BBF717] text-black hover:bg-[#9FD615] font-bold"
+            >
               Voltar ao Login
             </Button>
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -110,7 +135,9 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Nome Completo</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Nome Completo
+            </label>
             <Input
               type="text"
               name="name"
@@ -123,7 +150,9 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Email
+            </label>
             <Input
               type="email"
               name="email"
@@ -136,7 +165,9 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Telefone</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Telefone
+            </label>
             <Input
               type="tel"
               name="phone"
@@ -149,7 +180,9 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Experiência em Trading</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Experiência em Trading
+            </label>
             <select
               name="experience"
               value={formData.experience}
@@ -166,7 +199,9 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Senha</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Senha
+            </label>
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
@@ -192,7 +227,9 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Confirmar Senha</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Confirmar Senha
+            </label>
             <div className="relative">
               <Input
                 type={showConfirmPassword ? "text" : "password"}
@@ -218,7 +255,9 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
           </div>
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500 text-red-400 px-3 py-2 rounded text-sm">{error}</div>
+            <div className="bg-red-500/10 border border-red-500 text-red-400 px-3 py-2 rounded text-sm">
+              {error}
+            </div>
           )}
 
           <Button
@@ -232,7 +271,11 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
           <div className="text-center">
             <p className="text-sm text-gray-400">
               Já tem uma conta?{" "}
-              <button type="button" onClick={onSwitchToLogin} className="text-[#BBF717] hover:underline">
+              <button
+                type="button"
+                onClick={onSwitchToLogin}
+                className="text-[#BBF717] hover:underline"
+              >
                 Faça login
               </button>
             </p>
@@ -240,5 +283,5 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }
