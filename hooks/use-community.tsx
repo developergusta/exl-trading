@@ -1,137 +1,275 @@
-"use client"
+"use client";
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/lib/supabase";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import { v4 as uuidv4 } from "uuid";
+
+interface TradingData {
+  totalRealized: string;
+  netProfit: string;
+  winRate: string;
+  tradeCount: number;
+}
 
 interface CommunityPost {
-  id: string
-  content: string
-  authorId: string
-  authorName: string
-  authorAvatar: string
-  type: "text" | "image" | "trading"
-  image?: string
-  tradingData?: {
-    totalRealized: string
-    netProfit: string
-    winRate: string
-    tradeCount: number
-  }
-  likes: number
-  comments: number
-  isLiked: boolean
-  createdAt: string
+  id: string;
+  content: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar: string;
+  type: "text" | "image" | "trading";
+  image?: string;
+  tradingData?: TradingData;
+  likes: number;
+  comments: number;
+  isLiked: boolean;
+  createdAt: string;
+}
+
+interface DatabasePost {
+  id: string;
+  content: string;
+  author_id: string;
+  type: "text" | "image" | "trading";
+  image_url?: string;
+  trading_data?: TradingData;
+  likes_count: number;
+  comments_count: number;
+  created_at: string;
+  author?: {
+    id: string;
+    name: string;
+    avatar_url: string | null;
+  };
 }
 
 interface CommunityContextType {
-  posts: CommunityPost[]
-  addPost: (post: Omit<CommunityPost, "id" | "likes" | "comments" | "isLiked" | "createdAt">) => Promise<void>
-  toggleLike: (postId: string) => void
-  addComment: (postId: string, comment: string) => void
+  posts: CommunityPost[];
+  isLoading: boolean;
+  addPost: (
+    post: Omit<
+      CommunityPost,
+      "id" | "likes" | "comments" | "isLiked" | "createdAt"
+    >,
+    file?: File
+  ) => Promise<void>;
+  toggleLike: (postId: string) => Promise<void>;
+  addComment: (postId: string, comment: string) => Promise<void>;
 }
 
-const CommunityContext = createContext<CommunityContextType | undefined>(undefined)
+const CommunityContext = createContext<CommunityContextType | undefined>(
+  undefined
+);
 
 export function CommunityProvider({ children }: { children: ReactNode }) {
-  const [posts, setPosts] = useState<CommunityPost[]>([])
+  const { user } = useAuth();
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load posts from localStorage
-    const savedPosts = localStorage.getItem("communityPosts")
-    if (savedPosts) {
-      setPosts(JSON.parse(savedPosts))
-    } else {
-      // Initialize with sample posts
-      const samplePosts: CommunityPost[] = [
-        {
-          id: "1",
-          content: "Só perde quem nunca tentou.\nMaior gain e devolvendo mercado. Ajustando bora time pra cima",
-          authorId: "user-1",
-          authorName: "Raynold G.",
-          authorAvatar: "/avatars/raynold.png",
-          type: "trading",
-          tradingData: {
-            totalRealized: "4,380",
-            netProfit: "4,380",
-            winRate: "73.33",
-            tradeCount: 15,
-          },
-          likes: 12,
-          comments: 3,
-          isLiked: false,
-          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-        },
-        {
-          id: "2",
-          content: "O Day Trade é difícil, mas libertador. Resultado da minha semana 09/10-12/10 🚀🚀",
-          authorId: "user-2",
-          authorName: "Paulo Soares",
-          authorAvatar: "/avatars/paulo.png",
-          type: "trading",
-          tradingData: {
-            totalRealized: "1,231.50",
-            netProfit: "1,397.00",
-            winRate: "73.33",
-            tradeCount: 15,
-          },
-          likes: 8,
-          comments: 2,
-          isLiked: true,
-          createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago
-        },
-      ]
-      setPosts(samplePosts)
-      localStorage.setItem("communityPosts", JSON.stringify(samplePosts))
-    }
-  }, [])
+    if (!user || !supabase) return;
 
-  const addPost = async (postData: Omit<CommunityPost, "id" | "likes" | "comments" | "isLiked" | "createdAt">) => {
-    const newPost: CommunityPost = {
-      ...postData,
-      id: `post-${Date.now()}`,
-      likes: 0,
-      comments: 0,
-      isLiked: false,
-      createdAt: new Date().toISOString(),
-    }
+    const fetchPosts = async () => {
+      try {
+        if (!supabase) return;
 
-    const updatedPosts = [newPost, ...posts]
-    setPosts(updatedPosts)
-    localStorage.setItem("communityPosts", JSON.stringify(updatedPosts))
-  }
+        const { data: postsData, error: postsError } = await supabase
+          .from("community_posts")
+          .select(
+            `
+            *,
+            author:author_id (
+              id,
+              name,
+              avatar_url
+            )
+          `
+          )
+          .order("created_at", { ascending: false });
 
-  const toggleLike = (postId: string) => {
-    const updatedPosts = posts.map((post) => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          isLiked: !post.isLiked,
-          likes: post.isLiked ? post.likes - 1 : post.likes + 1,
-        }
+        if (postsError) throw postsError;
+
+        const postsWithLikes = await Promise.all(
+          ((postsData as DatabasePost[]) || []).map(async (post) => {
+            if (!supabase) return null;
+
+            const { data: likesData } = await supabase
+              .from("community_post_likes")
+              .select("user_id")
+              .eq("post_id", post.id);
+
+            const isLiked = (likesData || []).some(
+              (like) => like.user_id === user.id
+            );
+
+            const communityPost: CommunityPost = {
+              id: post.id,
+              content: post.content,
+              authorId: post.author_id,
+              authorName: post.author?.name || "Usuário",
+              authorAvatar: post.author?.avatar_url || "/placeholder-user.jpg",
+              type: post.type,
+              image: post.image_url,
+              tradingData: post.trading_data,
+              likes: post.likes_count || 0,
+              comments: post.comments_count || 0,
+              isLiked,
+              createdAt: post.created_at,
+            };
+
+            return communityPost;
+          })
+        );
+
+        setPosts(
+          postsWithLikes.filter((post): post is CommunityPost => post !== null)
+        );
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+      } finally {
+        setIsLoading(false);
       }
-      return post
-    })
-    setPosts(updatedPosts)
-    localStorage.setItem("communityPosts", JSON.stringify(updatedPosts))
-  }
+    };
 
-  const addComment = (postId: string, comment: string) => {
-    const updatedPosts = posts.map((post) => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          comments: post.comments + 1,
+    fetchPosts();
+
+    // Subscribe to realtime changes
+    const postsSubscription = supabase
+      .channel("community_posts")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "community_posts",
+        },
+        () => {
+          fetchPosts();
         }
+      )
+      .subscribe();
+
+    return () => {
+      postsSubscription.unsubscribe();
+    };
+  }, [user]);
+
+  const uploadImage = async (file: File): Promise<string> => {
+    console.log("uploadImage", file);
+    if (!supabase) throw new Error("Supabase client not available");
+
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${uuidv4()}.${fileExt}`;
+    const filePath = `community-posts/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("publico")
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("publico").getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
+  const addPost = async (
+    postData: Omit<
+      CommunityPost,
+      "id" | "likes" | "comments" | "isLiked" | "createdAt"
+    >,
+    file?: File
+  ) => {
+    if (!user) throw new Error("User not authenticated");
+    if (!supabase) throw new Error("Supabase client not available");
+
+    try {
+      let imageUrl = undefined;
+      if (file) {
+        imageUrl = await uploadImage(file);
       }
-      return post
-    })
-    setPosts(updatedPosts)
-    localStorage.setItem("communityPosts", JSON.stringify(updatedPosts))
-  }
+
+      const { error: insertError } = await supabase
+        .from("community_posts")
+        .insert({
+          content: postData.content,
+          author_id: user.id,
+          type: postData.type,
+          image_url: imageUrl,
+          trading_data: postData.tradingData,
+        });
+
+      if (insertError) throw insertError;
+    } catch (error) {
+      console.error("Error adding post:", error);
+      throw error;
+    }
+  };
+
+  const toggleLike = async (postId: string) => {
+    if (!user || !supabase) return;
+
+    try {
+      const post = posts.find((p) => p.id === postId);
+      if (!post) return;
+
+      if (post.isLiked) {
+        // Unlike
+        await supabase
+          .from("community_post_likes")
+          .delete()
+          .match({ post_id: postId, user_id: user.id });
+
+        await supabase
+          .from("community_posts")
+          .update({ likes_count: post.likes - 1 })
+          .eq("id", postId);
+      } else {
+        // Like
+        await supabase
+          .from("community_post_likes")
+          .insert({ post_id: postId, user_id: user.id });
+
+        await supabase
+          .from("community_posts")
+          .update({ likes_count: post.likes + 1 })
+          .eq("id", postId);
+      }
+    } catch (error) {
+      console.error("Error toggling like:", error);
+    }
+  };
+
+  const addComment = async (postId: string, comment: string) => {
+    if (!user || !supabase) return;
+
+    try {
+      const post = posts.find((p) => p.id === postId);
+      if (!post) return;
+
+      await supabase
+        .from("community_posts")
+        .update({ comments_count: post.comments + 1 })
+        .eq("id", postId);
+    } catch (error) {
+      console.error("Error adding comment:", error);
+    }
+  };
 
   return (
     <CommunityContext.Provider
       value={{
         posts,
+        isLoading,
         addPost,
         toggleLike,
         addComment,
@@ -139,13 +277,13 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
     >
       {children}
     </CommunityContext.Provider>
-  )
+  );
 }
 
 export function useCommunity() {
-  const context = useContext(CommunityContext)
+  const context = useContext(CommunityContext);
   if (context === undefined) {
-    throw new Error("useCommunity must be used within a CommunityProvider")
+    throw new Error("useCommunity must be used within a CommunityProvider");
   }
-  return context
+  return context;
 }

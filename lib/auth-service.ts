@@ -73,6 +73,7 @@ export class AuthService {
         status: profile.status,
         role: profile.role,
         createdAt: profile.created_at,
+        avatar_url: null,
       };
 
       return { success: true, user };
@@ -140,6 +141,7 @@ export class AuthService {
           status: profile.status,
           role: profile.role,
           createdAt: profile.created_at,
+          avatar_url: null,
         };
         return { success: true, user };
       }
@@ -153,6 +155,7 @@ export class AuthService {
         status: profile.status,
         role: profile.role,
         createdAt: profile.created_at,
+        avatar_url: null,
       };
 
       return { success: true, user };
@@ -170,30 +173,24 @@ export class AuthService {
   // Get current user
   async getCurrentUser(): Promise<User | null> {
     if (!isSupabaseConfigured || !supabase) {
-      console.log("AuthService: Supabase not configured");
       return null;
     }
 
     try {
-      console.log("AuthService: Getting current user from Supabase...");
-
       // Wrap getUser in its own try/catch
       let authUser;
       try {
         const { data } = await supabase.auth.getUser();
         authUser = data.user;
-        console.log("AuthService: Auth user result:", authUser);
       } catch (error) {
         console.error("AuthService: Error in getUser:", error);
         return null;
       }
 
       if (!authUser) {
-        console.log("AuthService: No auth user found");
         return null;
       }
 
-      console.log("AuthService: Getting user profile...");
       let profileResult;
       try {
         profileResult = await supabase
@@ -201,17 +198,12 @@ export class AuthService {
           .select("*")
           .eq("id", authUser.id)
           .single();
-        console.log("AuthService: Profile result:", profileResult);
       } catch (error) {
         console.error("AuthService: Error getting profile:", error);
         return null;
       }
 
       if (profileResult.error || !profileResult.data) {
-        console.log(
-          "AuthService: No profile found or error:",
-          profileResult.error
-        );
         return null;
       }
 
@@ -225,8 +217,8 @@ export class AuthService {
         status: profile.status,
         role: profile.role,
         createdAt: profile.created_at,
+        avatar_url: null,
       };
-      console.log("AuthService: Returning user:", user);
       return user;
     } catch (error) {
       console.error("AuthService: Unexpected error:", error);
@@ -263,6 +255,7 @@ export class AuthService {
             status: profile.status,
             role: profile.role,
             createdAt: profile.created_at,
+            avatar_url: null,
           });
         }
       }
@@ -356,6 +349,7 @@ export class AuthService {
           status: profile.status,
           role: profile.role,
           createdAt: profile.created_at,
+          avatar_url: null,
         }));
 
       return users;

@@ -215,6 +215,7 @@ export interface User {
   name: string;
   email: string;
   phone: string | null;
+  avatar_url: string | null;
   experience: string;
   status: "pending" | "approved" | "rejected";
   role: "user" | "admin";

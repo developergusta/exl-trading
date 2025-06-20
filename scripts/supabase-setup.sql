@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   name TEXT NOT NULL,
   phone TEXT,
+  avatar_url TEXT,
   experience TEXT NOT NULL CHECK (experience IN ('iniciante', 'intermediario', 'avancado', 'profissional')),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
@@ -311,5 +312,71 @@ CREATE TRIGGER set_company_posts_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_updated_at();
 
+-- Create community posts table
+CREATE TABLE IF NOT EXISTS public.community_posts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  content TEXT NOT NULL,
+  image_url TEXT,
+  author_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('text', 'image', 'trading')),
+  trading_data JSONB,
+  likes_count INTEGER DEFAULT 0,
+  comments_count INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS on community_posts
+ALTER TABLE public.community_posts ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for community_posts table
+CREATE POLICY "Everyone can view community posts" ON public.community_posts
+  FOR SELECT USING (true);
+
+CREATE POLICY "Authenticated users can create community posts" ON public.community_posts
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Users can update their own posts" ON public.community_posts
+  FOR UPDATE USING (auth.uid() = author_id);
+
+CREATE POLICY "Users can delete their own posts" ON public.community_posts
+  FOR DELETE USING (auth.uid() = author_id);
+
+-- Create post likes table
+CREATE TABLE IF NOT EXISTS public.community_post_likes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  post_id UUID REFERENCES public.community_posts(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(post_id, user_id)
+);
+
+-- Enable RLS on community_post_likes
+ALTER TABLE public.community_post_likes ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for community_post_likes table
+CREATE POLICY "Users can view post likes" ON public.community_post_likes
+  FOR SELECT USING (true);
+
+CREATE POLICY "Users can like posts" ON public.community_post_likes
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can unlike posts" ON public.community_post_likes
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- Create trigger for updated_at
+CREATE TRIGGER set_community_posts_updated_at
+  BEFORE UPDATE ON public.community_posts
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_updated_at();
+
+-- Adicionar coluna avatar_url na tabela profiles existente
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+
+-- Atualizar os perfis existentes com um avatar padrão
+UPDATE public.profiles
+SET avatar_url = '/placeholder-user.jpg'
+WHERE avatar_url IS NULL;
 
   
