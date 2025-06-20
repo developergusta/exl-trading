@@ -46,25 +46,6 @@ export class AuthService {
         return { success: false, error: "Erro ao criar usuário" };
       }
 
-      // Retry buscar o perfil até 5 vezes
-      let profile = null;
-      let profileError = null;
-      for (let i = 0; i < 5; i++) {
-        const { data: p, error: e } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", authData.user.id)
-          .single();
-        profile = p;
-        profileError = e;
-        if (profile) break;
-        await new Promise((res) => setTimeout(res, 200));
-      }
-
-      if (profileError || !profile) {
-        return { success: false, error: "Erro ao criar perfil do usuário" };
-      }
-
       return { success: true };
     } catch (error) {
       return { success: false, error: "Erro interno do servidor" };
