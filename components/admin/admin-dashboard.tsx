@@ -1,30 +1,48 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { UserManagement } from "@/components/admin/user-management"
-import { CommunityModeration } from "@/components/admin/community-moderation"
-import { NotificationCenter } from "@/components/admin/notification-center"
-import { SystemSettings } from "@/components/admin/system-settings"
-import { useAuth } from "@/hooks/use-auth"
-import { ArrowLeft, Users, MessageSquare, Bell, Settings, BarChart3, Shield } from "lucide-react"
+import { CommunityModeration } from "@/components/admin/community-moderation";
+import { NotificationCenter } from "@/components/admin/notification-center";
+import { SystemSettings } from "@/components/admin/system-settings";
+import { UserManagement } from "@/components/admin/user-management";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/hooks/use-auth";
+import { useCommunity } from "@/hooks/use-community";
+import { useCompanyFeed } from "@/hooks/use-company-feed";
+import {
+  ArrowLeft,
+  BarChart3,
+  Bell,
+  MessageSquare,
+  Settings,
+  Shield,
+  Users,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface AdminDashboardProps {
-  onBack: () => void
+  onBack: () => void;
 }
 
 export function AdminDashboard({ onBack }: AdminDashboardProps) {
-  const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState("overview")
+  const { user, getAllUsers } = useAuth();
+  const { posts: communityPosts } = useCommunity();
+  const { posts: companyPosts } = useCompanyFeed();
+  const [activeTab, setActiveTab] = useState("overview");
+  const [users, setUsers] = useState<any[]>([]);
 
-  // Get stats
-  const users = JSON.parse(localStorage.getItem("users") || "[]")
-  const pendingUsers = users.filter((u: any) => u.status === "pending")
-  const approvedUsers = users.filter((u: any) => u.status === "approved")
-  const communityPosts = JSON.parse(localStorage.getItem("communityPosts") || "[]")
-  const companyPosts = JSON.parse(localStorage.getItem("companyPosts") || "[]")
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    const allUsers = await getAllUsers();
+    setUsers(allUsers);
+  };
+
+  const pendingUsers = users.filter((u: any) => u.status === "pending");
+  const approvedUsers = users.filter((u: any) => u.status === "approved");
 
   return (
     <div className="min-h-screen bg-[#0E0E0E] text-white">
@@ -32,7 +50,10 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Button onClick={onBack} className="bg-[#1C1C1C] text-[#BBF717] hover:bg-[#2C2C2C]">
+            <Button
+              onClick={onBack}
+              className="bg-[#1C1C1C] text-[#BBF717] hover:bg-[#2C2C2C]"
+            >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar
             </Button>
@@ -47,17 +68,30 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-6"
+        >
           <TabsList className="grid w-full grid-cols-5 bg-[#1C1C1C]">
-            <TabsTrigger value="overview" className="data-[state=active]:bg-[#BBF717] data-[state=active]:text-black">
+            <TabsTrigger
+              value="overview"
+              className="data-[state=active]:bg-[#BBF717] data-[state=active]:text-black"
+            >
               <BarChart3 className="w-4 h-4 mr-2" />
               Visão Geral
             </TabsTrigger>
-            <TabsTrigger value="users" className="data-[state=active]:bg-[#BBF717] data-[state=active]:text-black">
+            <TabsTrigger
+              value="users"
+              className="data-[state=active]:bg-[#BBF717] data-[state=active]:text-black"
+            >
               <Users className="w-4 h-4 mr-2" />
               Usuários
             </TabsTrigger>
-            <TabsTrigger value="community" className="data-[state=active]:bg-[#BBF717] data-[state=active]:text-black">
+            <TabsTrigger
+              value="community"
+              className="data-[state=active]:bg-[#BBF717] data-[state=active]:text-black"
+            >
               <MessageSquare className="w-4 h-4 mr-2" />
               Comunidade
             </TabsTrigger>
@@ -68,7 +102,10 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
               <Bell className="w-4 h-4 mr-2" />
               Notificações
             </TabsTrigger>
-            <TabsTrigger value="settings" className="data-[state=active]:bg-[#BBF717] data-[state=active]:text-black">
+            <TabsTrigger
+              value="settings"
+              className="data-[state=active]:bg-[#BBF717] data-[state=active]:text-black"
+            >
               <Settings className="w-4 h-4 mr-2" />
               Sistema
             </TabsTrigger>
@@ -84,7 +121,9 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
                       <Users className="h-6 w-6 text-black" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-white">{pendingUsers.length}</p>
+                      <p className="text-2xl font-bold text-white">
+                        {pendingUsers.length}
+                      </p>
                       <p className="text-sm text-gray-400">Pendentes</p>
                     </div>
                   </div>
@@ -98,7 +137,9 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
                       <Users className="h-6 w-6 text-black" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-white">{approvedUsers.length}</p>
+                      <p className="text-2xl font-bold text-white">
+                        {approvedUsers.length}
+                      </p>
                       <p className="text-sm text-gray-400">Aprovados</p>
                     </div>
                   </div>
@@ -112,7 +153,9 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
                       <MessageSquare className="h-6 w-6 text-black" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-white">{communityPosts.length}</p>
+                      <p className="text-2xl font-bold text-white">
+                        {communityPosts.length}
+                      </p>
                       <p className="text-sm text-gray-400">Posts Comunidade</p>
                     </div>
                   </div>
@@ -126,7 +169,9 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
                       <Bell className="h-6 w-6 text-black" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-white">{companyPosts.length}</p>
+                      <p className="text-2xl font-bold text-white">
+                        {companyPosts.length}
+                      </p>
                       <p className="text-sm text-gray-400">Posts Empresa</p>
                     </div>
                   </div>
@@ -142,16 +187,25 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
               <CardContent>
                 <div className="space-y-4">
                   {pendingUsers.slice(0, 5).map((user: any) => (
-                    <div key={user.id} className="flex items-center justify-between p-3 bg-[#2A2B2A] rounded-lg">
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between p-3 bg-[#2A2B2A] rounded-lg"
+                    >
                       <div>
                         <p className="font-medium text-white">{user.name}</p>
-                        <p className="text-sm text-gray-400">Novo cadastro pendente</p>
+                        <p className="text-sm text-gray-400">
+                          Novo cadastro pendente
+                        </p>
                       </div>
-                      <span className="text-xs text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded">Pendente</span>
+                      <span className="text-xs text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded">
+                        Pendente
+                      </span>
                     </div>
                   ))}
                   {pendingUsers.length === 0 && (
-                    <p className="text-gray-400 text-center py-4">Nenhuma atividade recente</p>
+                    <p className="text-gray-400 text-center py-4">
+                      Nenhuma atividade recente
+                    </p>
                   )}
                 </div>
               </CardContent>
@@ -176,5 +230,5 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
         </Tabs>
       </div>
     </div>
-  )
+  );
 }
