@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -33,6 +34,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export function UserManagement() {
   const { getAllUsers, approveUser, rejectUser } = useAuth();
@@ -44,6 +46,21 @@ export function UserManagement() {
   const [editingUser, setEditingUser] = useState<any>(null);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    action: () => Promise<void>;
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    action: async () => {},
+  });
+  const [userToAction, setUserToAction] = useState<{
+    id: string;
+    action: "approve" | "reject";
+  } | null>(null);
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
@@ -62,7 +79,6 @@ export function UserManagement() {
 
   const loadUsers = async () => {
     const allUsers = await getAllUsers();
-    console.log("allUsers", allUsers);
     setUsers(allUsers);
   };
 
@@ -194,6 +210,26 @@ export function UserManagement() {
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleApproveUser = async (userId: string) => {
+    try {
+      await approveUser(userId);
+      await loadUsers();
+      toast.success("Usuário aprovado com sucesso!");
+    } catch (error) {
+      toast.error("Erro ao aprovar usuário. Tente novamente.");
+    }
+  };
+
+  const handleRejectUser = async (userId: string) => {
+    try {
+      await rejectUser(userId);
+      await loadUsers();
+      toast.success("Usuário rejeitado com sucesso!");
+    } catch (error) {
+      toast.error("Erro ao rejeitar usuário. Tente novamente.");
+    }
   };
 
   return (
@@ -380,20 +416,44 @@ export function UserManagement() {
                         {user.status === "pending" && (
                           <>
                             <Button
-                              onClick={() =>
-                                approveUser(user.id).then(loadUsers)
-                              }
+                              onClick={() => {
+                                setConfirmDialog({
+                                  open: true,
+                                  title: "Aprovar Usuário",
+                                  description: `Tem certeza que deseja aprovar o usuário ${user.name}?`,
+                                  action: async () => {
+                                    await handleApproveUser(user.id);
+                                    setConfirmDialog((prev) => ({
+                                      ...prev,
+                                      open: false,
+                                    }));
+                                  },
+                                });
+                              }}
                               size="sm"
                               className="bg-green-600 hover:bg-green-700 text-white p-1 h-8 w-8"
+                              title="Aprovar usuário"
                             >
                               <Check className="w-4 h-4" />
                             </Button>
                             <Button
-                              onClick={() =>
-                                rejectUser(user.id).then(loadUsers)
-                              }
+                              onClick={() => {
+                                setConfirmDialog({
+                                  open: true,
+                                  title: "Rejeitar Usuário",
+                                  description: `Tem certeza que deseja rejeitar o usuário ${user.name}?`,
+                                  action: async () => {
+                                    await handleRejectUser(user.id);
+                                    setConfirmDialog((prev) => ({
+                                      ...prev,
+                                      open: false,
+                                    }));
+                                  },
+                                });
+                              }}
                               size="sm"
                               className="bg-red-600 hover:bg-red-700 text-white p-1 h-8 w-8"
+                              title="Rejeitar usuário"
                             >
                               <X className="w-4 h-4" />
                             </Button>
@@ -504,6 +564,42 @@ export function UserManagement() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}
+      >
+        <DialogContent className="bg-[#1C1C1C] border-[#2C2C2C] text-white">
+          <DialogHeader>
+            <DialogTitle>{confirmDialog.title}</DialogTitle>
+          </DialogHeader>
+          <p className="text-gray-300">{confirmDialog.description}</p>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() =>
+                setConfirmDialog((prev) => ({ ...prev, open: false }))
+              }
+              className="border-[#555] bg-[#2C2C2C] text-white hover:bg-[#3C3C3C] hover:text-white"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                toast.promise(confirmDialog.action(), {
+                  loading: "Processando...",
+                  success: "Operação realizada com sucesso!",
+                  error: "Erro ao realizar operação",
+                });
+              }}
+              className="bg-[#BBF717] text-black hover:bg-[#9FD615]"
+            >
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={alertOpen}

@@ -5,6 +5,7 @@
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   name TEXT NOT NULL,
+  email TEXT NOT NULL,
   phone TEXT,
   avatar_url TEXT,
   experience TEXT NOT NULL CHECK (experience IN ('iniciante', 'intermediario', 'avancado', 'profissional')),
@@ -379,4 +380,15 @@ UPDATE public.profiles
 SET avatar_url = '/placeholder-user.jpg'
 WHERE avatar_url IS NULL;
 
-  
+  create function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, email, name)
+  values (new.id, new.email, '');
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute procedure public.handle_new_user();

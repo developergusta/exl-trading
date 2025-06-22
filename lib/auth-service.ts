@@ -134,10 +134,23 @@ export class AuthService {
     }
   }
 
-  // Logout user
+  // Logout user with cleanup
   async logout(): Promise<void> {
     if (!isSupabaseConfigured || !supabase) return;
-    await supabase.auth.signOut();
+
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Error in logout:", error);
+    }
+
+    // Limpa qualquer dado local
+    try {
+      localStorage.removeItem("supabase.auth.token");
+      sessionStorage.clear();
+    } catch (error) {
+      console.warn("Error clearing storage:", error);
+    }
   }
 
   // Get current user
@@ -147,17 +160,26 @@ export class AuthService {
     }
 
     try {
-      // Wrap getUser in its own try/catch
+      // Primeiro verifica se há uma sessão válida
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        return null;
+      }
+
+      // Então tenta obter o usuário
       let authUser;
       try {
         const { data } = await supabase.auth.getUser();
         authUser = data.user;
       } catch (error) {
         console.error("AuthService: Error in getUser:", error);
+        // Se falhar em obter o usuário, limpa a sessão
+        await this.logout();
         return null;
       }
 
-      if (!authUser) {
+      if (!authUser?.id) {
+        await this.logout();
         return null;
       }
 
@@ -170,10 +192,12 @@ export class AuthService {
           .single();
       } catch (error) {
         console.error("AuthService: Error getting profile:", error);
+        await this.logout();
         return null;
       }
 
       if (profileResult.error || !profileResult.data) {
+        await this.logout();
         return null;
       }
 
@@ -189,9 +213,18 @@ export class AuthService {
         createdAt: profile.created_at,
         avatar_url: null,
       };
+
+      // Verifica se os dados do usuário são válidos
+      if (!user.id || !user.email || !user.status || !user.role) {
+        console.error("AuthService: Invalid user data", user);
+        await this.logout();
+        return null;
+      }
+
       return user;
     } catch (error) {
       console.error("AuthService: Unexpected error:", error);
+      await this.logout();
       return null;
     }
   }

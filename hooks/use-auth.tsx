@@ -51,22 +51,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const initializeSupabaseAuth = async () => {
     try {
-      const currentUser = await authService.getCurrentUser();
-      if (currentUser) {
-        setUser(currentUser);
-        setIsAuthenticated(true);
-      } else {
-      }
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      const initializeAuth = async () => {
+        const currentUser = await authService.getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+          setIsAuthenticated(true);
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      };
+
+      // Primeira tentativa
+      await initializeAuth();
 
       // Listen to auth state changes
-      const unsubscribe = authService.onAuthStateChange((user) => {
-        setUser(user);
-        setIsAuthenticated(!!user);
+      const unsubscribe = authService.onAuthStateChange(async (user) => {
+        if (user) {
+          setUser(user);
+          setIsAuthenticated(true);
+        } else {
+          // Se perdeu a autenticação, tenta reconectar
+          if (retryCount < maxRetries) {
+            retryCount++;
+            console.log(`Tentando reconectar... Tentativa ${retryCount}`);
+            await initializeAuth();
+          } else {
+            setUser(null);
+            setIsAuthenticated(false);
+          }
+        }
       });
 
       setIsLoading(false);
       return unsubscribe;
     } catch (error) {
+      console.error("Erro ao inicializar auth:", error);
+      setIsLoading(false);
       initializeLocalAuth();
     }
   };

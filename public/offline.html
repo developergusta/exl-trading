@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EXL Trading - Offline</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        background-color: #0e0e0e;
+        color: white;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
+      .container {
+        padding: 20px;
+        max-width: 600px;
+      }
+      h1 {
+        color: #bbf717;
+        font-size: 2rem;
+        margin-bottom: 1rem;
+      }
+      p {
+        color: #999;
+        margin-bottom: 2rem;
+      }
+      .button {
+        background-color: #bbf717;
+        color: black;
+        padding: 12px 24px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: bold;
+        transition: opacity 0.2s;
+      }
+      .button:hover {
+        opacity: 0.9;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Você está offline</h1>
+      <p>
+        Parece que você perdeu sua conexão com a internet. Verifique sua conexão
+        e tente novamente.
+      </p>
+      <a href="/" class="button" onclick="window.location.reload()"
+        >Tentar Novamente</a
+      >
+    </div>
+    <script>
+      // Verifica periodicamente se a conexão foi restaurada
+      setInterval(() => {
+        if (navigator.onLine) {
+          window.location.reload();
+        }
+      }, 5000);
+    </script>
+  </body>
+</html>

@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { useRef, useState } from "react";
-import { toast } from "react-hot-toast";
+import { toast } from "sonner";
 
 export function CommunityFeed() {
   const { user } = useAuth();
