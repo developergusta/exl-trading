@@ -62,6 +62,7 @@ interface CommunityContextType {
   ) => Promise<void>;
   toggleLike: (postId: string) => Promise<void>;
   addComment: (postId: string, comment: string) => Promise<void>;
+  deletePost: (postId: string) => Promise<void>;
 }
 
 const CommunityContext = createContext<CommunityContextType | undefined>(
@@ -73,70 +74,70 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchPosts = async () => {
+    try {
+      if (!supabase) return;
+
+      const { data: postsData, error: postsError } = await supabase
+        .from("community_posts")
+        .select(
+          `
+          *,
+          author:author_id (
+            id,
+            name,
+            avatar_url
+          )
+        `
+        )
+        .order("created_at", { ascending: false });
+
+      if (postsError) throw postsError;
+
+      const postsWithLikes = await Promise.all(
+        ((postsData as DatabasePost[]) || []).map(async (post) => {
+          if (!supabase) return null;
+
+          const { data: likesData } = await supabase
+            .from("community_post_likes")
+            .select("user_id")
+            .eq("post_id", post.id);
+
+          const isLiked = (likesData || []).some(
+            (like) => like.user_id === user?.id
+          );
+
+          const communityPost: CommunityPost = {
+            id: post.id,
+            content: post.content,
+            authorId: post.author_id,
+            authorName: post.author?.name || "Usuário",
+            authorAvatar: post.author?.avatar_url || "/placeholder-user.jpg",
+            type: post.type,
+            image: post.image_url,
+            tradingData: post.trading_data,
+            likes: post.likes_count || 0,
+            comments: post.comments_count || 0,
+            isLiked,
+            createdAt: post.created_at,
+          };
+
+          return communityPost;
+        })
+      );
+
+      setPosts(
+        postsWithLikes.filter((post): post is CommunityPost => post !== null)
+      );
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!user || !supabase) return;
-
-    const fetchPosts = async () => {
-      try {
-        if (!supabase) return;
-
-        const { data: postsData, error: postsError } = await supabase
-          .from("community_posts")
-          .select(
-            `
-            *,
-            author:author_id (
-              id,
-              name,
-              avatar_url
-            )
-          `
-          )
-          .order("created_at", { ascending: false });
-
-        if (postsError) throw postsError;
-
-        const postsWithLikes = await Promise.all(
-          ((postsData as DatabasePost[]) || []).map(async (post) => {
-            if (!supabase) return null;
-
-            const { data: likesData } = await supabase
-              .from("community_post_likes")
-              .select("user_id")
-              .eq("post_id", post.id);
-
-            const isLiked = (likesData || []).some(
-              (like) => like.user_id === user.id
-            );
-
-            const communityPost: CommunityPost = {
-              id: post.id,
-              content: post.content,
-              authorId: post.author_id,
-              authorName: post.author?.name || "Usuário",
-              authorAvatar: post.author?.avatar_url || "/placeholder-user.jpg",
-              type: post.type,
-              image: post.image_url,
-              tradingData: post.trading_data,
-              likes: post.likes_count || 0,
-              comments: post.comments_count || 0,
-              isLiked,
-              createdAt: post.created_at,
-            };
-
-            return communityPost;
-          })
-        );
-
-        setPosts(
-          postsWithLikes.filter((post): post is CommunityPost => post !== null)
-        );
-      } catch (error) {
-        console.error("Error fetching posts:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
 
     fetchPosts();
 
@@ -265,6 +266,25 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const deletePost = async (postId: string) => {
+    if (!user || !supabase) throw new Error("User not authenticated");
+
+    try {
+      const { error } = await supabase
+        .from("community_posts")
+        .delete()
+        .eq("id", postId);
+
+      if (error) throw error;
+
+      // Recarregar os posts após a exclusão
+      await fetchPosts();
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      throw error;
+    }
+  };
+
   return (
     <CommunityContext.Provider
       value={{
@@ -273,6 +293,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         addPost,
         toggleLike,
         addComment,
+        deletePost,
       }}
     >
       {children}

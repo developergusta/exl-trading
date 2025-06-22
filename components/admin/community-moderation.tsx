@@ -1,5 +1,6 @@
 "use client";
 
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,42 +15,140 @@ import { useCommunity } from "@/hooks/use-community";
 import { useCompanyFeed } from "@/hooks/use-company-feed";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Building, Eye, Flag, MessageSquare, Send, Trash2 } from "lucide-react";
-import { useState } from "react";
+import {
+  Building,
+  ImageIcon,
+  MessageSquare,
+  Send,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useRef, useState } from "react";
+
+interface CompanyPost {
+  id: string;
+  content: string | null;
+  image_url: string | null;
+  created_at: string;
+  author_id: string;
+}
+
+interface CommunityPost {
+  id: string;
+  content: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar: string;
+  type: "text" | "image" | "trading";
+  image?: string;
+  tradingData?: any;
+  likes: number;
+  comments: number;
+  isLiked: boolean;
+  createdAt: string;
+}
+
+type Post = CompanyPost | CommunityPost;
+
+interface DeleteConfirmation {
+  postId: string;
+  type: "community" | "company";
+  isOpen: boolean;
+}
 
 export function CommunityModeration() {
-  const { posts: communityPosts } = useCommunity();
-  const { posts: companyPosts, addPost: addCompanyPost } = useCompanyFeed();
+  const { posts: communityPosts, deletePost: deleteCommunityPost } =
+    useCommunity();
+  const {
+    posts: companyPosts,
+    addPost: addCompanyPost,
+    deletePost: deleteCompanyPost,
+  } = useCompanyFeed();
   const [newCompanyPost, setNewCompanyPost] = useState("");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [isAddingPost, setIsAddingPost] = useState(false);
-  const [selectedPost, setSelectedPost] = useState<any>(null);
-
-  const handleAddCompanyPost = async () => {
-    if (!newCompanyPost.trim()) return;
-
-    setIsAddingPost(true);
-    await addCompanyPost({
-      content: newCompanyPost,
-      image: null,
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] =
+    useState<DeleteConfirmation>({
+      postId: "",
+      type: "company",
+      isOpen: false,
     });
-    setNewCompanyPost("");
-    setIsAddingPost(false);
-  };
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleDeletePost = (postId: string, type: "community" | "company") => {
-    if (!confirm("Tem certeza que deseja excluir este post?")) return;
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    if (type === "community") {
-      const posts = JSON.parse(localStorage.getItem("communityPosts") || "[]");
-      const updatedPosts = posts.filter((p: any) => p.id !== postId);
-      localStorage.setItem("communityPosts", JSON.stringify(updatedPosts));
-    } else {
-      const posts = JSON.parse(localStorage.getItem("companyPosts") || "[]");
-      const updatedPosts = posts.filter((p: any) => p.id !== postId);
-      localStorage.setItem("companyPosts", JSON.stringify(updatedPosts));
+    // Validar tamanho (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("A imagem deve ter no máximo 5MB");
+      return;
     }
 
-    window.location.reload(); // Refresh to update the lists
+    // Validar tipo
+    if (!file.type.startsWith("image/")) {
+      alert("O arquivo deve ser uma imagem");
+      return;
+    }
+
+    setSelectedImage(file);
+  };
+
+  const handleAddCompanyPost = async () => {
+    if (!newCompanyPost.trim() && !selectedImage) return;
+
+    setIsAddingPost(true);
+    try {
+      await addCompanyPost({
+        content: newCompanyPost,
+        image: selectedImage,
+      });
+      setNewCompanyPost("");
+      setSelectedImage(null);
+    } catch (error) {
+      console.error("Error posting:", error);
+      alert("Erro ao publicar o post. Tente novamente.");
+    } finally {
+      setIsAddingPost(false);
+    }
+  };
+
+  const handleDeleteConfirm = (
+    postId: string,
+    type: "community" | "company"
+  ) => {
+    setDeleteConfirmation({
+      postId,
+      type,
+      isOpen: true,
+    });
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirmation({
+      postId: "",
+      type: "company",
+      isOpen: false,
+    });
+  };
+
+  const handleDeletePost = async () => {
+    const { postId, type } = deleteConfirmation;
+
+    try {
+      console.log(type, postId);
+      if (type === "community") {
+        await deleteCommunityPost(postId);
+      } else {
+        await deleteCompanyPost(postId);
+      }
+    } catch (error) {
+      console.error("Erro ao excluir post:", error);
+      alert("Erro ao excluir o post. Tente novamente.");
+    } finally {
+      handleDeleteCancel();
+    }
   };
 
   const getInitials = (name: string) => {
@@ -79,14 +178,54 @@ export function CommunityModeration() {
             className="bg-[#2A2B2A] border-[#555] text-white min-h-[120px]"
             rows={5}
           />
-          <Button
-            onClick={handleAddCompanyPost}
-            disabled={!newCompanyPost.trim() || isAddingPost}
-            className="bg-[#BBF717] text-black hover:bg-[#9FD615]"
-          >
-            <Send className="w-4 h-4 mr-2" />
-            {isAddingPost ? "Publicando..." : "Publicar Atualização"}
-          </Button>
+
+          {selectedImage && (
+            <div className="mt-2 relative">
+              <img
+                src={URL.createObjectURL(selectedImage)}
+                alt="Selected"
+                className="max-h-48 rounded-lg"
+              />
+              <Button
+                onClick={() => setSelectedImage(null)}
+                variant="ghost"
+                size="sm"
+                className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-4">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              ref={fileInputRef}
+              className="hidden"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-gray-500 hover:text-white"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <ImageIcon className="w-5 h-5 mr-2" />
+              Adicionar Imagem
+            </Button>
+
+            <Button
+              onClick={handleAddCompanyPost}
+              disabled={
+                (!newCompanyPost.trim() && !selectedImage) || isAddingPost
+              }
+              className="bg-[#BBF717] text-black hover:bg-[#9FD615] ml-auto"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              {isAddingPost ? "Publicando..." : "Publicar Atualização"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -122,15 +261,7 @@ export function CommunityModeration() {
                   </div>
                   <div className="flex gap-2">
                     <Button
-                      onClick={() => setSelectedPost(post)}
-                      size="sm"
-                      variant="outline"
-                      className="border-[#555] text-white hover:bg-[#2C2C2C] p-1 h-8 w-8"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      onClick={() => handleDeletePost(post.id, "company")}
+                      onClick={() => handleDeleteConfirm(post.id, "company")}
                       size="sm"
                       variant="outline"
                       className="border-red-500 text-red-400 hover:bg-red-500 hover:text-white p-1 h-8 w-8"
@@ -142,6 +273,15 @@ export function CommunityModeration() {
                 <p className="text-gray-200 text-sm line-clamp-3">
                   {post.content}
                 </p>
+                {post.image_url && (
+                  <div className="mt-3">
+                    <img
+                      src={post.image_url}
+                      alt="Imagem do post"
+                      className="rounded-lg w-full max-h-[300px] object-cover"
+                    />
+                  </div>
+                )}
               </div>
             ))}
             {companyPosts.length === 0 && (
@@ -189,22 +329,7 @@ export function CommunityModeration() {
                   </div>
                   <div className="flex gap-2">
                     <Button
-                      onClick={() => setSelectedPost(post)}
-                      size="sm"
-                      variant="outline"
-                      className="border-[#555] text-white hover:bg-[#2C2C2C] p-1 h-8 w-8"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-yellow-500 text-yellow-400 hover:bg-yellow-500 hover:text-black p-1 h-8 w-8"
-                    >
-                      <Flag className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      onClick={() => handleDeletePost(post.id, "community")}
+                      onClick={() => handleDeleteConfirm(post.id, "community")}
                       size="sm"
                       variant="outline"
                       className="border-red-500 text-red-400 hover:bg-red-500 hover:text-white p-1 h-8 w-8"
@@ -216,6 +341,15 @@ export function CommunityModeration() {
                 <p className="text-gray-200 text-sm line-clamp-3">
                   {post.content}
                 </p>
+                {post.image && (
+                  <div className="mt-3">
+                    <img
+                      src={post.image}
+                      alt="Imagem do post"
+                      className="rounded-lg w-full max-h-[300px] object-cover"
+                    />
+                  </div>
+                )}
                 <div className="flex items-center gap-4 mt-3 text-sm text-gray-400">
                   <span>❤️ {post.likes} curtidas</span>
                   <span>💬 {post.comments} comentários</span>
@@ -245,21 +379,36 @@ export function CommunityModeration() {
               <div className="flex gap-3">
                 <Avatar className="w-12 h-12">
                   <AvatarImage
-                    src={selectedPost.authorAvatar || "/images/exl-logo.png"}
+                    src={
+                      "authorAvatar" in selectedPost
+                        ? selectedPost.authorAvatar
+                        : "/images/exl-logo.png"
+                    }
                   />
                   <AvatarFallback className="bg-[#BBF717] text-black text-sm font-bold">
-                    {getInitials(selectedPost.authorName)}
+                    {"authorName" in selectedPost
+                      ? getInitials(selectedPost.authorName)
+                      : "EXL"}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <h4 className="font-semibold text-white">
-                    {selectedPost.authorName}
+                    {"authorName" in selectedPost
+                      ? selectedPost.authorName
+                      : "EXL Trading"}
                   </h4>
                   <p className="text-sm text-gray-500">
-                    {formatDistanceToNow(new Date(selectedPost.createdAt), {
-                      addSuffix: true,
-                      locale: ptBR,
-                    })}
+                    {formatDistanceToNow(
+                      new Date(
+                        "createdAt" in selectedPost
+                          ? selectedPost.createdAt
+                          : selectedPost.created_at
+                      ),
+                      {
+                        addSuffix: true,
+                        locale: ptBR,
+                      }
+                    )}
                   </p>
                 </div>
               </div>
@@ -267,8 +416,26 @@ export function CommunityModeration() {
                 <p className="text-gray-200 whitespace-pre-line">
                   {selectedPost.content}
                 </p>
+                {"image_url" in selectedPost && selectedPost.image_url && (
+                  <div className="mt-3">
+                    <img
+                      src={selectedPost.image_url}
+                      alt="Imagem do post"
+                      className="rounded-lg w-full max-h-[300px] object-cover"
+                    />
+                  </div>
+                )}
+                {"image" in selectedPost && selectedPost.image && (
+                  <div className="mt-3">
+                    <img
+                      src={selectedPost.image}
+                      alt="Imagem do post"
+                      className="rounded-lg w-full max-h-[300px] object-cover"
+                    />
+                  </div>
+                )}
               </div>
-              {selectedPost.tradingData && (
+              {"tradingData" in selectedPost && selectedPost.tradingData && (
                 <div className="bg-black p-4 rounded-lg">
                   <h5 className="text-white font-semibold mb-2">
                     Dados de Trading
@@ -301,7 +468,7 @@ export function CommunityModeration() {
                   </div>
                 </div>
               )}
-              {selectedPost.likes !== undefined && (
+              {"likes" in selectedPost && (
                 <div className="flex items-center gap-4 text-sm text-gray-400">
                   <span>❤️ {selectedPost.likes} curtidas</span>
                   <span>💬 {selectedPost.comments} comentários</span>
@@ -311,6 +478,20 @@ export function CommunityModeration() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={deleteConfirmation.isOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) handleDeleteCancel();
+        }}
+        title="Confirmar Exclusão"
+        description="Tem certeza que deseja excluir este post? Esta ação não pode ser desfeita."
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        onConfirm={handleDeletePost}
+        variant="danger"
+      />
     </div>
   );
 }

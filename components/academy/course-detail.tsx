@@ -1,47 +1,58 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAcademy } from "@/hooks/use-academy"
-import { useAuth } from "@/hooks/use-auth"
-import { ContentItem } from "@/components/academy/content-item"
-import { ArrowLeft, BookOpen, Plus, Settings } from "lucide-react"
-import type { Database } from "@/lib/supabase"
+import { ContentForm } from "@/components/academy/content-form";
+import { ContentItem } from "@/components/academy/content-item";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAcademy } from "@/hooks/use-academy";
+import { useAuth } from "@/hooks/use-auth";
+import type { Database } from "@/lib/supabase";
+import { ArrowLeft, BookOpen, Plus, Settings } from "lucide-react";
+import { useEffect, useState } from "react";
 
-type Course = Database["public"]["Tables"]["courses"]["Row"]
-type CourseContent = Database["public"]["Tables"]["course_content"]["Row"]
+type Course = Database["public"]["Tables"]["courses"]["Row"];
+type CourseContent = Database["public"]["Tables"]["course_content"]["Row"];
 
 interface CourseDetailProps {
-  courseId: string
-  onBack: () => void
+  courseId: string;
+  onBack: () => void;
 }
 
 export function CourseDetail({ courseId, onBack }: CourseDetailProps) {
-  const { getCourseById, getCourseContent } = useAcademy()
-  const { isAdmin } = useAuth()
-  const [course, setCourse] = useState<Course | null>(null)
-  const [content, setContent] = useState<CourseContent[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedContent, setSelectedContent] = useState<CourseContent | null>(null)
+  const { getCourseById, getCourseContent } = useAcademy();
+  const { isAdmin } = useAuth();
+  const [course, setCourse] = useState<Course | null>(null);
+  const [content, setContent] = useState<CourseContent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedContent, setSelectedContent] = useState<CourseContent | null>(
+    null
+  );
+  const [showContentForm, setShowContentForm] = useState(false);
 
   useEffect(() => {
-    loadCourseData()
-  }, [courseId])
+    loadCourseData();
+  }, [courseId]);
 
   const loadCourseData = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const [courseData, contentData] = await Promise.all([getCourseById(courseId), getCourseContent(courseId)])
+      const [courseData, contentData] = await Promise.all([
+        getCourseById(courseId),
+        getCourseContent(courseId),
+      ]);
 
-      setCourse(courseData)
-      setContent(contentData)
+      setCourse(courseData as any);
+      setContent(contentData as any);
     } catch (error) {
-      console.error("Erro ao carregar dados do curso:", error)
+      console.error("Erro ao carregar dados do curso:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  const handleContentCreated = () => {
+    loadCourseData(); // Recarrega os dados do curso para mostrar o novo conteúdo
+  };
 
   if (loading) {
     return (
@@ -49,27 +60,35 @@ export function CourseDetail({ courseId, onBack }: CourseDetailProps) {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#BBF717] mx-auto mb-4"></div>
         <p className="text-gray-400">Carregando curso...</p>
       </div>
-    )
+    );
   }
 
   if (!course) {
     return (
       <div className="text-center py-12">
         <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-        <h3 className="text-xl font-medium text-white mb-2">Curso não encontrado</h3>
-        <Button onClick={onBack} className="bg-[#BBF717] text-black hover:bg-[#9FD615]">
+        <h3 className="text-xl font-medium text-white mb-2">
+          Curso não encontrado
+        </h3>
+        <Button
+          onClick={onBack}
+          className="bg-[#BBF717] text-black hover:bg-[#9FD615]"
+        >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Voltar
         </Button>
       </div>
-    )
+    );
   }
 
   return (
     <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
-        <Button onClick={onBack} className="bg-[#1C1C1C] text-[#BBF717] hover:bg-[#2C2C2C]">
+        <Button
+          onClick={onBack}
+          className="bg-[#1C1C1C] text-[#BBF717] hover:bg-[#2C2C2C]"
+        >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar aos Cursos
         </Button>
@@ -77,9 +96,7 @@ export function CourseDetail({ courseId, onBack }: CourseDetailProps) {
         {isAdmin && (
           <div className="flex gap-2">
             <Button
-              onClick={() => {
-                /* TODO: Open add content modal */
-              }}
+              onClick={() => setShowContentForm(true)}
               className="bg-[#BBF717] text-black hover:bg-[#9FD615]"
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -90,7 +107,7 @@ export function CourseDetail({ courseId, onBack }: CourseDetailProps) {
                 /* TODO: Open course settings */
               }}
               variant="outline"
-              className="border-[#555] text-white hover:bg-[#2C2C2C]"
+              className="border-[#555] text-white bg-[#2C2C2C] hover:bg-[#3C3C3C]"
             >
               <Settings className="w-4 h-4 mr-2" />
               Configurações
@@ -118,8 +135,12 @@ export function CourseDetail({ courseId, onBack }: CourseDetailProps) {
             </div>
 
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-white mb-4">{course.title}</h1>
-              <p className="text-gray-300 text-lg mb-6">{course.description || "Descrição não disponível"}</p>
+              <h1 className="text-3xl font-bold text-white mb-4">
+                {course.title}
+              </h1>
+              <p className="text-gray-300 text-lg mb-6">
+                {course.description || "Descrição não disponível"}
+              </p>
 
               <div className="flex flex-wrap gap-4 text-sm text-gray-400">
                 <div className="flex items-center gap-2">
@@ -128,7 +149,10 @@ export function CourseDetail({ courseId, onBack }: CourseDetailProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <span>📅</span>
-                  <span>Criado em {new Date(course.created_at).toLocaleDateString("pt-BR")}</span>
+                  <span>
+                    Criado em{" "}
+                    {new Date(course.created_at).toLocaleDateString("pt-BR")}
+                  </span>
                 </div>
               </div>
             </div>
@@ -152,7 +176,9 @@ export function CourseDetail({ courseId, onBack }: CourseDetailProps) {
                       key={item.id}
                       onClick={() => setSelectedContent(item)}
                       className={`p-4 cursor-pointer hover:bg-[#2A2B2A] transition-colors border-l-4 ${
-                        selectedContent?.id === item.id ? "border-[#BBF717] bg-[#2A2B2A]" : "border-transparent"
+                        selectedContent?.id === item.id
+                          ? "border-[#BBF717] bg-[#2A2B2A]"
+                          : "border-transparent"
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -160,8 +186,12 @@ export function CourseDetail({ courseId, onBack }: CourseDetailProps) {
                           {index + 1}
                         </div>
                         <div className="flex-1">
-                          <h4 className="font-medium text-white text-sm">{item.title}</h4>
-                          <p className="text-xs text-gray-400 capitalize">{item.content_type}</p>
+                          <h4 className="font-medium text-white text-sm">
+                            {item.title}
+                          </h4>
+                          <p className="text-xs text-gray-400 capitalize">
+                            {item.content_type}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -186,14 +216,26 @@ export function CourseDetail({ courseId, onBack }: CourseDetailProps) {
               <CardContent className="h-full flex items-center justify-center">
                 <div className="text-center">
                   <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-xl font-medium text-white mb-2">Selecione um conteúdo</h3>
-                  <p className="text-gray-400">Escolha uma aula na lista ao lado para começar</p>
+                  <h3 className="text-xl font-medium text-white mb-2">
+                    Selecione um conteúdo
+                  </h3>
+                  <p className="text-gray-400">
+                    Escolha uma aula na lista ao lado para começar
+                  </p>
                 </div>
               </CardContent>
             </Card>
           )}
         </div>
       </div>
+
+      {/* Content Form Modal */}
+      <ContentForm
+        isOpen={showContentForm}
+        onClose={() => setShowContentForm(false)}
+        courseId={courseId}
+        onContentCreated={handleContentCreated}
+      />
     </div>
-  )
+  );
 }

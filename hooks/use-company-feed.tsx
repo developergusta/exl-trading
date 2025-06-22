@@ -27,6 +27,7 @@ interface CompanyFeedContextType {
   posts: CompanyPost[];
   loading: boolean;
   addPost: (input: CreatePostInput) => Promise<void>;
+  deletePost: (postId: string) => Promise<void>;
 }
 
 const CompanyFeedContext = createContext<CompanyFeedContextType | undefined>(
@@ -36,10 +37,6 @@ const CompanyFeedContext = createContext<CompanyFeedContextType | undefined>(
 export function CompanyFeedProvider({ children }: { children: ReactNode }) {
   const [posts, setPosts] = useState<CompanyPost[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchPosts();
-  }, []);
 
   const fetchPosts = async () => {
     try {
@@ -58,6 +55,30 @@ export function CompanyFeedProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchPosts();
+
+    // Inscrever-se para atualizações em tempo real
+    const channel = supabase
+      ?.channel("company_posts")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "company_posts",
+        },
+        () => {
+          fetchPosts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel?.unsubscribe();
+    };
+  }, []);
 
   const uploadImage = async (file: File) => {
     try {
@@ -157,12 +178,32 @@ export function CompanyFeedProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const deletePost = async (postId: string) => {
+    try {
+      if (!supabase) throw new Error("Supabase client not initialized");
+
+      const { error } = await supabase
+        .from("company_posts")
+        .delete()
+        .eq("id", postId);
+
+      if (error) throw error;
+
+      // Recarregar os posts após a exclusão
+      await fetchPosts();
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      throw error;
+    }
+  };
+
   return (
     <CompanyFeedContext.Provider
       value={{
         posts,
         loading,
         addPost,
+        deletePost,
       }}
     >
       {children}

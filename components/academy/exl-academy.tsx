@@ -1,28 +1,35 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { useAcademy } from "@/hooks/use-academy"
-import { useAuth } from "@/hooks/use-auth"
-import { CourseCard } from "@/components/academy/course-card"
-import { CourseDetail } from "@/components/academy/course-detail"
-import { Search, BookOpen, Plus } from "lucide-react"
+import { CourseCard } from "@/components/academy/course-card";
+import { CourseDetail } from "@/components/academy/course-detail";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useAcademy } from "@/hooks/use-academy";
+import { useAuth } from "@/hooks/use-auth";
+import { BookOpen, Plus, Search } from "lucide-react";
+import { useState } from "react";
+import { CourseForm } from "./course-form";
 
 export function ExlAcademy() {
-  const { courses, loading, isConfigured } = useAcademy()
-  const { isAdmin } = useAuth()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCourse, setSelectedCourse] = useState<string | null>(null)
+  const { courses, loading, isConfigured, refreshCourses } = useAcademy();
+  const { isAdmin } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
+  const [showCourseForm, setShowCourseForm] = useState(false);
 
   const filteredCourses = courses.filter(
     (course) =>
       course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      course.description?.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+      course.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (selectedCourse) {
-    return <CourseDetail courseId={selectedCourse} onBack={() => setSelectedCourse(null)} />
+    return (
+      <CourseDetail
+        courseId={selectedCourse}
+        onBack={() => setSelectedCourse(null)}
+      />
+    );
   }
 
   return (
@@ -32,7 +39,9 @@ export function ExlAcademy() {
           <BookOpen className="h-12 w-12 text-[#BBF717]" />
           <h1 className="text-4xl font-bold">EXL Academy</h1>
         </div>
-        <p className="text-xl text-gray-400">Aprenda com os melhores cursos de trading e análise técnica</p>
+        <p className="text-xl text-gray-400">
+          Aprenda com os melhores cursos de trading e análise técnica
+        </p>
       </div>
 
       {/* Supabase Configuration Warning */}
@@ -40,7 +49,12 @@ export function ExlAcademy() {
         <div className="bg-yellow-500/10 border border-yellow-500 rounded-lg p-4 mb-8">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
-              <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-4 h-4 text-black"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -52,7 +66,8 @@ export function ExlAcademy() {
             <div>
               <h4 className="font-medium text-yellow-400">Modo Demonstração</h4>
               <p className="text-sm text-yellow-300">
-                Configure o Supabase para funcionalidade completa. Atualmente exibindo dados de exemplo.
+                Configure o Supabase para funcionalidade completa. Atualmente
+                exibindo dados de exemplo.
               </p>
             </div>
           </div>
@@ -73,9 +88,7 @@ export function ExlAcademy() {
 
         {isAdmin && (
           <Button
-            onClick={() => {
-              /* TODO: Open create course modal */
-            }}
+            onClick={() => setShowCourseForm(true)}
             className="bg-[#BBF717] text-black hover:bg-[#9FD615]"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -98,17 +111,25 @@ export function ExlAcademy() {
           {filteredCourses.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredCourses.map((course) => (
-                <CourseCard key={course.id} course={course} onClick={() => setSelectedCourse(course.id)} />
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  onClick={() => setSelectedCourse(course.id)}
+                />
               ))}
             </div>
           ) : (
             <div className="text-center py-16">
               <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-xl font-medium text-white mb-2">
-                {searchTerm ? "Nenhum curso encontrado" : "Nenhum curso disponível"}
+                {searchTerm
+                  ? "Nenhum curso encontrado"
+                  : "Nenhum curso disponível"}
               </h3>
               <p className="text-gray-500">
-                {searchTerm ? "Tente buscar com outros termos" : "Novos cursos serão adicionados em breve"}
+                {searchTerm
+                  ? "Tente buscar com outros termos"
+                  : "Novos cursos serão adicionados em breve"}
               </p>
             </div>
           )}
@@ -117,31 +138,54 @@ export function ExlAcademy() {
 
       {/* Academy Info */}
       <div className="mt-16 bg-[#1C1C1C] p-8 rounded-lg border border-[#2C2C2C]">
-        <h2 className="text-2xl font-bold text-[#BBF717] mb-4">Sobre a EXL Academy</h2>
+        <h2 className="text-2xl font-bold text-[#BBF717] mb-4">
+          Sobre a EXL Academy
+        </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center">
             <div className="w-16 h-16 bg-[#BBF717] rounded-full flex items-center justify-center mx-auto mb-4">
               <BookOpen className="h-8 w-8 text-black" />
             </div>
-            <h3 className="font-semibold text-white mb-2">Conteúdo Exclusivo</h3>
+            <h3 className="font-semibold text-white mb-2">
+              Conteúdo Exclusivo
+            </h3>
             <p className="text-gray-400 text-sm">
-              Cursos desenvolvidos por traders profissionais com anos de experiência no mercado
+              Cursos desenvolvidos por traders profissionais com anos de
+              experiência no mercado
             </p>
           </div>
           <div className="text-center">
             <div className="w-16 h-16 bg-[#4ECDC4] rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="h-8 w-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              <svg
+                className="h-8 w-8 text-black"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
               </svg>
             </div>
-            <h3 className="font-semibold text-white mb-2">Aprendizado Rápido</h3>
+            <h3 className="font-semibold text-white mb-2">
+              Aprendizado Rápido
+            </h3>
             <p className="text-gray-400 text-sm">
-              Metodologia focada em resultados práticos e aplicação imediata no trading
+              Metodologia focada em resultados práticos e aplicação imediata no
+              trading
             </p>
           </div>
           <div className="text-center">
             <div className="w-16 h-16 bg-[#FF6B6B] rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="h-8 w-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="h-8 w-8 text-black"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -151,10 +195,24 @@ export function ExlAcademy() {
               </svg>
             </div>
             <h3 className="font-semibold text-white mb-2">Certificação</h3>
-            <p className="text-gray-400 text-sm">Receba certificados de conclusão para comprovar seu conhecimento</p>
+            <p className="text-gray-400 text-sm">
+              Receba certificados de conclusão para comprovar seu conhecimento
+            </p>
           </div>
         </div>
       </div>
+
+      {/* Course Form Modal */}
+      {showCourseForm && (
+        <CourseForm
+          isOpen={showCourseForm}
+          onClose={() => setShowCourseForm(false)}
+          onSave={() => {
+            refreshCourses();
+            setShowCourseForm(false);
+          }}
+        />
+      )}
     </div>
-  )
+  );
 }

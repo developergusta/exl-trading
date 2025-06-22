@@ -94,11 +94,20 @@ CREATE TABLE IF NOT EXISTS public.courses (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
   description TEXT,
-  logo_url TEXT,
+  cover_image_url TEXT,
+  instructor_name TEXT,
+  instructor_bio TEXT,
+  instructor_avatar_url TEXT,
+  category TEXT NOT NULL CHECK (category IN ('trading', 'analise-tecnica', 'psicologia', 'gestao-risco', 'outros')),
+  level TEXT NOT NULL CHECK (level IN ('iniciante', 'intermediario', 'avancado')),
+  duration_hours INTEGER DEFAULT 0,
+  price DECIMAL(10,2) DEFAULT 0,
+  is_free BOOLEAN DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
+  is_featured BOOLEAN DEFAULT false,
   created_by UUID REFERENCES public.profiles(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  is_active BOOLEAN DEFAULT true
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- Enable RLS on courses
