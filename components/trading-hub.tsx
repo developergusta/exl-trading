@@ -98,30 +98,6 @@ const tools = [
     color: "bg-[#00B894]",
     path: "/dashboard/calendar",
   },
-  {
-    id: "community",
-    title: "Comunidade",
-    description: "Interaja com outros traders",
-    icon: Globe,
-    color: "bg-[#6C5CE7]",
-    path: "/dashboard/community",
-  },
-  {
-    id: "feed",
-    title: "Atualizações",
-    description: "Últimas notícias e atualizações",
-    icon: Globe,
-    color: "bg-[#A29BFE]",
-    path: "/dashboard/feed",
-  },
-  {
-    id: "profile",
-    title: "Perfil",
-    description: "Gerencie suas informações pessoais",
-    icon: Settings,
-    color: "bg-[#FD79A8]",
-    path: "/dashboard/profile",
-  },
 ];
 
 export function TradingHub({ onAdminClick }: TradingHubProps) {

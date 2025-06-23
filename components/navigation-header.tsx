@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowLeft, LogOut, Settings } from "lucide-react";
+import { ArrowLeft, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface NavigationHeaderProps {
@@ -43,7 +43,6 @@ export function NavigationHeader({
       </div>
 
       <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-400">Olá, {user?.name}</span>
         {isAdmin && (
           <Button
             onClick={handleAdminClick}
@@ -54,14 +53,6 @@ export function NavigationHeader({
             Admin
           </Button>
         )}
-        <Button
-          onClick={logout}
-          variant="outline"
-          size="sm"
-          className="text-red-400 border-red-400 hover:bg-red-400 hover:text-black"
-        >
-          <LogOut className="h-4 w-4" />
-        </Button>
       </div>
     </div>
   );
