@@ -54,6 +54,7 @@ export default function LoginPage() {
           <p className="text-gray-400 mt-2">
             Acesso restrito para traders aprovados
           </p>
+          <InstallPrompt />
         </div>
 
         {/* Auth Forms */}
@@ -77,7 +78,6 @@ export default function LoginPage() {
         )}
       </div>
 
-      <InstallPrompt />
       <OfflineIndicator />
     </div>
   );

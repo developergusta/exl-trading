@@ -53,6 +53,7 @@ export default function PendingPage() {
           <p className="text-gray-400 mt-2">
             Acesso restrito para traders aprovados
           </p>
+          <InstallPrompt />
         </div>
 
         {/* Status Message for Pending Users */}
@@ -77,7 +78,6 @@ export default function PendingPage() {
         </div>
       </div>
 
-      <InstallPrompt />
       <OfflineIndicator />
     </div>
   );
