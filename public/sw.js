@@ -123,3 +123,147 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
+// ===== PUSH NOTIFICATIONS =====
+
+// Listener para receber push notifications
+self.addEventListener("push", (event) => {
+  console.log("Push notification recebida:", event);
+
+  let data = {};
+
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = {
+        title: "EXL Trading Hub",
+        body: event.data.text() || "Nova notificação",
+        icon: "/icons/icon-192x192.png",
+        badge: "/icons/icon-72x72.png",
+      };
+    }
+  }
+
+  const options = {
+    title: data.title || "EXL Trading Hub",
+    body: data.body || "Nova notificação",
+    icon: data.icon || "/icons/icon-192x192.png",
+    badge: data.badge || "/icons/icon-72x72.png",
+    image: data.image,
+    data: data.data || {},
+    tag: data.tag || "exl-notification",
+    requireInteraction: data.requireInteraction || false,
+    actions: data.actions || [
+      {
+        action: "open",
+        title: "Abrir App",
+        icon: "/icons/icon-72x72.png",
+      },
+      {
+        action: "close",
+        title: "Fechar",
+        icon: "/icons/icon-72x72.png",
+      },
+    ],
+    vibrate: data.vibrate || [200, 100, 200],
+    silent: data.silent || false,
+  };
+
+  event.waitUntil(self.registration.showNotification(options.title, options));
+});
+
+// Listener para cliques nas notificações
+self.addEventListener("notificationclick", (event) => {
+  console.log("Clique na notificação:", event);
+
+  event.notification.close();
+
+  if (event.action === "close") {
+    return;
+  }
+
+  // Abre o app ou foca na aba existente
+  event.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        // Procura por uma aba já aberta do app
+        for (const client of clientList) {
+          if (client.url.includes(self.location.origin) && "focus" in client) {
+            return client.focus();
+          }
+        }
+
+        // Se não encontrar, abre uma nova aba
+        if (clients.openWindow) {
+          const urlToOpen = event.notification.data?.url || "/dashboard";
+          return clients.openWindow(urlToOpen);
+        }
+      })
+  );
+});
+
+// Listener para fechar notificações
+self.addEventListener("notificationclose", (event) => {
+  console.log("Notificação fechada:", event);
+
+  // Pode registrar analytics aqui se necessário
+  event.waitUntil(
+    fetch("/api/notifications/closed", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        notificationId: event.notification.tag,
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {
+      // Ignora erros - analytics opcional
+    })
+  );
+});
+
+// Listener para subscription changes
+self.addEventListener("pushsubscriptionchange", (event) => {
+  console.log("Push subscription mudou:", event);
+
+  event
+    .waitUntil(
+      self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(
+          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
+            "BJBbeccXG6xElUWfINU0TmPpCavZtG7oIYsbzcfI75_QKbkyw4TxHBbBucgxDTVdiuTHJ8ZX9teAtcJucbv3vgQ"
+        ),
+      })
+    )
+    .then((subscription) => {
+      // Envia nova subscription para o servidor
+      return fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(subscription),
+      });
+    })
+    .catch((error) => {
+      console.error("Erro ao renovar subscription:", error);
+    });
+});
+
+// Função helper para converter VAPID key
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
