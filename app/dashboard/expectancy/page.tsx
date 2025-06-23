@@ -1,6 +1,7 @@
 "use client";
 
 import { ExpectancyPanel } from "@/components/expectancy-panel";
+import { NavigationHeader } from "@/components/navigation-header";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
@@ -40,8 +41,9 @@ export default function ExpectancyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0E0E0E] text-white p-5">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-[#0E0E0E] text-white">
+      <NavigationHeader title="Painel de Expectativa" />
+      <div className="max-w-6xl mx-auto p-5">
         <ExpectancyPanel />
       </div>
       <OfflineIndicator />

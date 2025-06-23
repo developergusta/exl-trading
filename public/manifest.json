@@ -1,6 +1,6 @@
 {
-  "name": "EXL Trading",
-  "short_name": "EXL Trading",
+  "name": "EXL Trading Hub",
+  "short_name": "EXL Trading Hub",
   "description": "Trading platform for analysis and management",
   "start_url": "/",
   "display": "standalone",

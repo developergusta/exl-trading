@@ -395,7 +395,7 @@ export function CommunityModeration() {
                   <h4 className="font-semibold text-white">
                     {"authorName" in selectedPost
                       ? selectedPost.authorName
-                      : "EXL Trading"}
+                      : "EXL Trading Hub"}
                   </h4>
                   <p className="text-sm text-gray-500">
                     {formatDistanceToNow(

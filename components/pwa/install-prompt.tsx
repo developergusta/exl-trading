@@ -1,76 +1,84 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Download, X } from "lucide-react"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Download, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface BeforeInstallPromptEvent extends Event {
-  readonly platforms: string[]
+  readonly platforms: string[];
   readonly userChoice: Promise<{
-    outcome: "accepted" | "dismissed"
-    platform: string
-  }>
-  prompt(): Promise<void>
+    outcome: "accepted" | "dismissed";
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
 }
 
 export function InstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [showInstallPrompt, setShowInstallPrompt] = useState(false)
-  const [isInstalled, setIsInstalled] = useState(false)
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
     // Check if app is already installed
     if (window.matchMedia("(display-mode: standalone)").matches) {
-      setIsInstalled(true)
-      return
+      setIsInstalled(true);
+      return;
     }
 
     // Listen for beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
-      setShowInstallPrompt(true)
-    }
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setShowInstallPrompt(true);
+    };
 
     // Listen for app installed event
     const handleAppInstalled = () => {
-      setIsInstalled(true)
-      setShowInstallPrompt(false)
-      setDeferredPrompt(null)
-    }
+      setIsInstalled(true);
+      setShowInstallPrompt(false);
+      setDeferredPrompt(null);
+    };
 
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
-    window.addEventListener("appinstalled", handleAppInstalled)
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
-      window.removeEventListener("appinstalled", handleAppInstalled)
-    }
-  }, [])
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt
+      );
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return
+    if (!deferredPrompt) return;
 
-    deferredPrompt.prompt()
-    const { outcome } = await deferredPrompt.userChoice
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
 
     if (outcome === "accepted") {
-      setShowInstallPrompt(false)
+      setShowInstallPrompt(false);
     }
 
-    setDeferredPrompt(null)
-  }
+    setDeferredPrompt(null);
+  };
 
   const handleDismiss = () => {
-    setShowInstallPrompt(false)
+    setShowInstallPrompt(false);
     // Remember user dismissed the prompt
-    localStorage.setItem("installPromptDismissed", "true")
-  }
+    localStorage.setItem("installPromptDismissed", "true");
+  };
 
   // Don't show if already installed or user dismissed
-  if (isInstalled || !showInstallPrompt || localStorage.getItem("installPromptDismissed")) {
-    return null
+  if (
+    isInstalled ||
+    !showInstallPrompt ||
+    localStorage.getItem("installPromptDismissed")
+  ) {
+    return null;
   }
 
   return (
@@ -79,27 +87,44 @@ export function InstallPrompt() {
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <img src="/icons/icon-72x72.png" alt="EXL Trading" className="w-8 h-8 rounded" />
-              <h3 className="font-bold text-white">Instalar EXL Trading</h3>
+              <img
+                src="/icons/icon-72x72.png"
+                alt="EXL Trading Hub"
+                className="w-8 h-8 rounded"
+              />
+              <h3 className="font-bold text-white">Instalar EXL Trading Hub</h3>
             </div>
             <p className="text-sm text-gray-300 mb-3">
-              Instale o app para acesso rápido e experiência completa offline!
+              Instale o app para acesso rápido e experiência completa!
             </p>
             <div className="flex gap-2">
-              <Button onClick={handleInstallClick} className="bg-[#BBF717] text-black hover:bg-[#9FD615] text-sm">
+              <Button
+                onClick={handleInstallClick}
+                className="bg-[#BBF717] text-black hover:bg-[#9FD615] text-sm"
+              >
                 <Download className="w-4 h-4 mr-1" />
                 Instalar App
               </Button>
-              <Button onClick={handleDismiss} variant="ghost" size="sm" className="text-gray-400">
+              <Button
+                onClick={handleDismiss}
+                variant="ghost"
+                size="sm"
+                className="text-gray-400"
+              >
                 Agora não
               </Button>
             </div>
           </div>
-          <Button onClick={handleDismiss} variant="ghost" size="sm" className="text-gray-400 p-1">
+          <Button
+            onClick={handleDismiss}
+            variant="ghost"
+            size="sm"
+            className="text-gray-400 p-1"
+          >
             <X className="w-4 h-4" />
           </Button>
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

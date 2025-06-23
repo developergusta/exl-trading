@@ -223,30 +223,61 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       const post = posts.find((p) => p.id === postId);
       if (!post) return;
 
+      // Atualização otimista - atualiza o estado imediatamente
+      const newIsLiked = !post.isLiked;
+      const newLikesCount = newIsLiked ? post.likes + 1 : post.likes - 1;
+
+      setPosts((prevPosts) =>
+        prevPosts.map((p) =>
+          p.id === postId
+            ? { ...p, isLiked: newIsLiked, likes: newLikesCount }
+            : p
+        )
+      );
+
+      // Executa as operações no banco em paralelo
       if (post.isLiked) {
         // Unlike
-        await supabase
-          .from("community_post_likes")
-          .delete()
-          .match({ post_id: postId, user_id: user.id });
-
-        await supabase
-          .from("community_posts")
-          .update({ likes_count: post.likes - 1 })
-          .eq("id", postId);
+        await Promise.all([
+          supabase
+            .from("community_post_likes")
+            .delete()
+            .match({ post_id: postId, user_id: user.id }),
+          supabase
+            .from("community_posts")
+            .update({ likes_count: post.likes - 1 })
+            .eq("id", postId),
+        ]);
       } else {
         // Like
-        await supabase
-          .from("community_post_likes")
-          .insert({ post_id: postId, user_id: user.id });
-
-        await supabase
-          .from("community_posts")
-          .update({ likes_count: post.likes + 1 })
-          .eq("id", postId);
+        await Promise.all([
+          supabase
+            .from("community_post_likes")
+            .insert({ post_id: postId, user_id: user.id }),
+          supabase
+            .from("community_posts")
+            .update({ likes_count: post.likes + 1 })
+            .eq("id", postId),
+        ]);
       }
     } catch (error) {
       console.error("Error toggling like:", error);
+
+      // Em caso de erro, reverte o estado otimista
+      const post = posts.find((p) => p.id === postId);
+      if (post) {
+        setPosts((prevPosts) =>
+          prevPosts.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  isLiked: !p.isLiked,
+                  likes: p.isLiked ? p.likes - 1 : p.likes + 1,
+                }
+              : p
+          )
+        );
+      }
     }
   };
 

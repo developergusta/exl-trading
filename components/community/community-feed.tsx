@@ -25,6 +25,7 @@ export function CommunityFeed() {
   const [newPost, setNewPost] = useState("");
   const [isPosting, setIsPosting] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [likingPosts, setLikingPosts] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,6 +72,23 @@ export function CommunityFeed() {
     } finally {
       setIsPosting(false);
     }
+  };
+
+  const handleToggleLike = async (postId: string) => {
+    // Adiciona animação temporariamente
+    setLikingPosts((prev) => new Set(prev.add(postId)));
+
+    // Remove a animação após um tempo
+    setTimeout(() => {
+      setLikingPosts((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(postId);
+        return newSet;
+      });
+    }, 600);
+
+    // Executa o toggle like
+    await toggleLike(postId);
   };
 
   const getInitials = (name: string) => {
@@ -272,22 +290,37 @@ export function CommunityFeed() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => toggleLike(post.id)}
-                    className={`flex items-center gap-2 ${
+                    onClick={() => handleToggleLike(post.id)}
+                    disabled={likingPosts.has(post.id)}
+                    className={`flex items-center gap-2 transition-all duration-200 transform hover:scale-105 ${
                       post.isLiked ? "text-red-500" : "text-gray-500"
-                    } hover:text-red-500`}
+                    } hover:text-red-500 ${
+                      likingPosts.has(post.id) ? "animate-bounce" : ""
+                    }`}
                   >
                     <Heart
-                      className={`w-4 h-4 ${
-                        post.isLiked ? "fill-current" : ""
+                      className={`w-4 h-4 transition-all duration-300 ${
+                        post.isLiked
+                          ? "fill-current scale-110"
+                          : "hover:scale-110"
+                      } ${
+                        likingPosts.has(post.id)
+                          ? "animate-[heartbeat_0.6s_ease-in-out]"
+                          : ""
                       }`}
                     />
-                    <span>{post.likes}</span>
+                    <span
+                      className={`transition-all duration-200 font-medium ${
+                        likingPosts.has(post.id) ? "scale-110" : ""
+                      }`}
+                    >
+                      {post.likes}
+                    </span>
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="flex items-center gap-2 text-gray-500 hover:text-blue-500"
+                    className="flex items-center gap-2 text-gray-500 hover:text-blue-500 transition-colors duration-200"
                   >
                     <MessageCircle className="w-4 h-4" />
                     <span>{post.comments}</span>

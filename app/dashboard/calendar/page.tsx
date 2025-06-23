@@ -1,6 +1,7 @@
 "use client";
 
 import { Calendar } from "@/components/calendar";
+import { NavigationHeader } from "@/components/navigation-header";
 import { OfflineIndicator } from "@/components/pwa/offline-indicator";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
@@ -40,10 +41,10 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0E0E0E] text-white p-5">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-[#0E0E0E] text-white">
+      <NavigationHeader title="Calendário de Trading" />
+      <div className="max-w-6xl mx-auto p-5">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Calendário de Trading</h1>
           <p className="text-gray-400">
             Visualize e gerencie suas operações por data
           </p>
