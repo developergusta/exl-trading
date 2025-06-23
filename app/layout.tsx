@@ -2,6 +2,7 @@ import { AcademyProvider } from "@/hooks/use-academy";
 import { AuthProvider } from "@/hooks/use-auth";
 import { CommunityProvider } from "@/hooks/use-community";
 import { CompanyFeedProvider } from "@/hooks/use-company-feed";
+import { SettingsProvider } from "@/hooks/use-settings";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
@@ -66,11 +67,13 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <AuthProvider>
-          <CommunityProvider>
-            <CompanyFeedProvider>
-              <AcademyProvider>{children}</AcademyProvider>
-            </CompanyFeedProvider>
-          </CommunityProvider>
+          <SettingsProvider>
+            <CommunityProvider>
+              <CompanyFeedProvider>
+                <AcademyProvider>{children}</AcademyProvider>
+              </CompanyFeedProvider>
+            </CommunityProvider>
+          </SettingsProvider>
         </AuthProvider>
         <Toaster position="top-right" />
       </body>

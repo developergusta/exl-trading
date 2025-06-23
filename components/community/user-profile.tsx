@@ -1,12 +1,26 @@
-"use client"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useAuth } from "@/hooks/use-auth"
-import { Settings, LogOut, User, Mail, Phone, Calendar, TrendingUp } from "lucide-react"
+"use client";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  Calendar,
+  LogOut,
+  Mail,
+  Phone,
+  Settings,
+  TrendingUp,
+  User,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export function UserProfile() {
-  const { user, logout } = useAuth()
+  const { user, logout } = useAuth();
+  const router = useRouter();
+
+  const handleSettingsClick = () => {
+    router.push("/dashboard/profile/settings");
+  };
 
   const getInitials = (name: string) => {
     return name
@@ -14,8 +28,8 @@ export function UserProfile() {
       .map((n) => n[0])
       .join("")
       .toUpperCase()
-      .slice(0, 2)
-  }
+      .slice(0, 2);
+  };
 
   const getExperienceLabel = (experience: string) => {
     const labels: Record<string, string> = {
@@ -23,9 +37,9 @@ export function UserProfile() {
       intermediario: "Intermediário (1-3 anos)",
       avancado: "Avançado (3-5 anos)",
       profissional: "Profissional (5+ anos)",
-    }
-    return labels[experience] || experience
-  }
+    };
+    return labels[experience] || experience;
+  };
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
@@ -44,7 +58,9 @@ export function UserProfile() {
               <p className="text-gray-400">{user?.email}</p>
               <div className="flex items-center gap-2 mt-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-green-600 font-medium">Conta Aprovada</span>
+                <span className="text-sm text-green-600 font-medium">
+                  Conta Aprovada
+                </span>
               </div>
             </div>
           </div>
@@ -78,7 +94,9 @@ export function UserProfile() {
             <TrendingUp className="w-4 h-4 text-gray-400" />
             <div>
               <p className="text-sm text-gray-400">Experiência</p>
-              <p className="font-medium text-white">{getExperienceLabel(user?.experience || "")}</p>
+              <p className="font-medium text-white">
+                {getExperienceLabel(user?.experience || "")}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -86,7 +104,9 @@ export function UserProfile() {
             <div>
               <p className="text-sm text-gray-400">Membro desde</p>
               <p className="font-medium text-white">
-                {user?.createdAt ? new Date(user.createdAt).toLocaleDateString("pt-BR") : "N/A"}
+                {user?.createdAt
+                  ? new Date(user.createdAt).toLocaleDateString("pt-BR")
+                  : "N/A"}
               </p>
             </div>
           </div>
@@ -118,7 +138,11 @@ export function UserProfile() {
       {/* Actions */}
       <Card className="bg-[#1C1C1C] border-[#2C2C2C]">
         <CardContent className="p-4 space-y-2">
-          <Button variant="ghost" className="w-full justify-start text-gray-200 hover:bg-[#2C2C2C]">
+          <Button
+            onClick={handleSettingsClick}
+            variant="ghost"
+            className="w-full justify-start text-gray-200 hover:bg-[#2C2C2C]"
+          >
             <Settings className="w-4 h-4 mr-3" />
             Configurações
           </Button>
@@ -133,5 +157,5 @@ export function UserProfile() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
