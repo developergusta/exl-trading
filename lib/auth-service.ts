@@ -95,7 +95,16 @@ export class AuthService {
         return { success: false, error: "Acesso administrativo negado" };
       }
 
-      // 4. Check if user is approved (unless admin)
+      // 4. Check if user is deleted (TEMPORÁRIO: usando rejected + [DELETADO])
+      if (
+        profile.status === "deleted" ||
+        (profile.status === "rejected" && profile.name.startsWith("[DELETADO]"))
+      ) {
+        await supabase.auth.signOut();
+        return { success: false, error: "Esta conta foi desativada" };
+      }
+
+      // 5. Check if user is approved (unless admin)
       if (
         !isAdminMode &&
         profile.status !== "approved" &&
@@ -202,6 +211,17 @@ export class AuthService {
       }
 
       const profile = profileResult.data;
+
+      // Check if user is deleted (TEMPORÁRIO: usando rejected + [DELETADO])
+      if (
+        profile.status === "deleted" ||
+        (profile.status === "rejected" && profile.name.startsWith("[DELETADO]"))
+      ) {
+        console.log("AuthService: User is deleted, logging out");
+        await this.logout();
+        return null;
+      }
+
       const user = {
         id: profile.id,
         name: profile.name,
@@ -329,24 +349,23 @@ export class AuthService {
 
       if (error || !profiles) return [];
 
-      // Get the current session to get user email
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const currentUserId = session?.user?.id;
-      const currentUserEmail = session?.user?.email;
+      // Filtrar usuários deletados (TEMPORÁRIO: rejected + [DELETADO])
+      const activeProfiles = profiles.filter(
+        (profile) =>
+          profile.status !== "deleted" &&
+          !(
+            profile.status === "rejected" &&
+            profile.name.startsWith("[DELETADO]")
+          )
+      );
 
       // Transform the data to match User interface
-      const users: User[] = profiles
+      const users: User[] = activeProfiles
         .filter((profile) => profile.role !== "admin")
         .map((profile) => ({
           id: profile.id,
           name: profile.name,
-          // Use session email if it's the current user, otherwise leave empty
-          email:
-            currentUserId === profile.id && currentUserEmail
-              ? currentUserEmail
-              : "",
+          email: profile.email,
           phone: profile.phone,
           experience: profile.experience,
           status: profile.status,
@@ -359,6 +378,71 @@ export class AuthService {
     } catch (error) {
       console.error("Error fetching users:", error);
       return [];
+    }
+  }
+
+  // Update user (admin only)
+  async updateUser(
+    userId: string,
+    updates: {
+      name?: string;
+      phone?: string;
+      experience?: string;
+      status?: string;
+    }
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!isSupabaseConfigured || !supabase) {
+      return { success: false, error: "Supabase não configurado" };
+    }
+
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+
+      if (error) {
+        return { success: false, error: "Erro ao atualizar usuário" };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: "Erro interno do servidor" };
+    }
+  }
+
+  // Delete user (admin only) - Usando soft delete para evitar problemas de permissão
+  async deleteUser(
+    userId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!isSupabaseConfigured || !supabase) {
+      return { success: false, error: "Supabase não configurado" };
+    }
+
+    try {
+      // SOLUÇÃO TEMPORÁRIA: Usar status "rejected" até executar o script SQL
+      // Quando o script SQL for executado, pode ser alterado para "deleted"
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({
+          status: "rejected", // Temporariamente usando "rejected" como "deleted"
+          name: `[DELETADO] ${new Date().toISOString()}`, // Marca visual de que foi deletado
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+
+      if (updateError) {
+        console.error("Erro ao marcar usuário como deletado:", updateError);
+        return { success: false, error: "Erro ao excluir usuário" };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error("Erro interno ao deletar usuário:", error);
+      return { success: false, error: "Erro interno do servidor" };
     }
   }
 

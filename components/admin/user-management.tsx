@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   Check,
   Download,
@@ -36,8 +37,24 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+interface ImportUser {
+  name: string;
+  email: string;
+  phone?: string;
+  experience: string;
+  password?: string;
+  status?: "pending" | "approved" | "rejected";
+}
+
 export function UserManagement() {
-  const { getAllUsers, approveUser, rejectUser } = useAuth();
+  const {
+    getAllUsers,
+    approveUser,
+    rejectUser,
+    register,
+    updateUser,
+    deleteUser,
+  } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -46,6 +63,7 @@ export function UserManagement() {
   const [editingUser, setEditingUser] = useState<any>(null);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     title: string;
@@ -100,115 +118,445 @@ export function UserManagement() {
     setFilteredUsers(filtered);
   };
 
-  const handleAddUser = () => {
-    if (!newUser.name || !newUser.email || !newUser.password) return;
+  const validateUserData = (userData: typeof newUser): string | null => {
+    if (!userData.name.trim()) {
+      return "Nome é obrigatório";
+    }
 
-    const allUsers = JSON.parse(localStorage.getItem("users") || "[]");
-    const passwords = JSON.parse(localStorage.getItem("passwords") || "{}");
+    if (!userData.email.trim()) {
+      return "Email é obrigatório";
+    }
 
-    const user = {
-      id: `user-${Date.now()}`,
-      ...newUser,
-      status: "approved",
-      role: "user",
-      createdAt: new Date().toISOString(),
-    };
+    // Validação de email básica
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(userData.email)) {
+      return "Email inválido";
+    }
 
-    allUsers.push(user);
-    passwords[user.email] = newUser.password;
+    if (!userData.password.trim()) {
+      return "Senha é obrigatória";
+    }
 
-    localStorage.setItem("users", JSON.stringify(allUsers));
-    localStorage.setItem("passwords", JSON.stringify(passwords));
+    if (userData.password.length < 6) {
+      return "Senha deve ter pelo menos 6 caracteres";
+    }
 
-    setNewUser({
-      name: "",
-      email: "",
-      phone: "",
-      experience: "",
-      password: "",
-    });
-    setIsAddUserOpen(false);
-    loadUsers();
+    if (!userData.experience) {
+      return "Experiência é obrigatória";
+    }
+
+    // Verificar se email já existe
+    if (
+      users.some(
+        (user) => user.email.toLowerCase() === userData.email.toLowerCase()
+      )
+    ) {
+      return "Email já está em uso";
+    }
+
+    return null;
+  };
+
+  const handleAddUser = async () => {
+    const validationError = validateUserData(newUser);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      if (isSupabaseConfigured) {
+        // Usar o sistema de registro do Supabase/Auth
+        const success = await register({
+          name: newUser.name.trim(),
+          email: newUser.email.trim().toLowerCase(),
+          phone: newUser.phone.trim(),
+          experience: newUser.experience,
+          password: newUser.password,
+          avatar_url: null,
+        });
+
+        if (success) {
+          toast.success("Usuário criado com sucesso!");
+          setNewUser({
+            name: "",
+            email: "",
+            phone: "",
+            experience: "",
+            password: "",
+          });
+          setIsAddUserOpen(false);
+          await loadUsers();
+        } else {
+          toast.error(
+            "Erro ao criar usuário. Verifique os dados e tente novamente."
+          );
+        }
+      } else {
+        // Fallback para localStorage
+        const allUsers = JSON.parse(localStorage.getItem("users") || "[]");
+        const passwords = JSON.parse(localStorage.getItem("passwords") || "{}");
+
+        const user = {
+          id: `user-${Date.now()}`,
+          name: newUser.name.trim(),
+          email: newUser.email.trim().toLowerCase(),
+          phone: newUser.phone.trim(),
+          experience: newUser.experience,
+          status: "approved", // Admin criado usuários já aprovados
+          role: "user",
+          createdAt: new Date().toISOString(),
+          avatar_url: null,
+        };
+
+        allUsers.push(user);
+        passwords[user.email] = newUser.password;
+
+        localStorage.setItem("users", JSON.stringify(allUsers));
+        localStorage.setItem("passwords", JSON.stringify(passwords));
+
+        toast.success("Usuário criado com sucesso!");
+        setNewUser({
+          name: "",
+          email: "",
+          phone: "",
+          experience: "",
+          password: "",
+        });
+        setIsAddUserOpen(false);
+        await loadUsers();
+      }
+    } catch (error) {
+      console.error("Erro ao criar usuário:", error);
+      toast.error("Erro inesperado ao criar usuário. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleEditUser = (user: any) => {
     setEditingUser(user);
   };
 
-  const handleUpdateUser = () => {
+  const handleUpdateUser = async () => {
     if (!editingUser) return;
 
-    const allUsers = JSON.parse(localStorage.getItem("users") || "[]");
-    const userIndex = allUsers.findIndex((u: any) => u.id === editingUser.id);
+    // Verificação básica dos campos obrigatórios para edição
+    if (!editingUser.name?.trim()) {
+      toast.error("Nome é obrigatório");
+      return;
+    }
 
-    if (userIndex !== -1) {
-      allUsers[userIndex] = editingUser;
-      localStorage.setItem("users", JSON.stringify(allUsers));
-      setEditingUser(null);
-      loadUsers();
+    if (!editingUser.experience) {
+      toast.error("Experiência é obrigatória");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      if (isSupabaseConfigured) {
+        const result = await updateUser(editingUser.id, {
+          name: editingUser.name.trim(),
+          phone: editingUser.phone?.trim() || "",
+          experience: editingUser.experience,
+          status: editingUser.status,
+        });
+
+        if (result.success) {
+          toast.success("Usuário atualizado com sucesso!");
+          setEditingUser(null);
+          await loadUsers();
+        } else {
+          toast.error(result.error || "Erro ao atualizar usuário");
+        }
+      } else {
+        // Fallback para localStorage
+        const allUsers = JSON.parse(localStorage.getItem("users") || "[]");
+        const userIndex = allUsers.findIndex(
+          (u: any) => u.id === editingUser.id
+        );
+
+        if (userIndex !== -1) {
+          allUsers[userIndex] = editingUser;
+          localStorage.setItem("users", JSON.stringify(allUsers));
+          toast.success("Usuário atualizado com sucesso!");
+          setEditingUser(null);
+          await loadUsers();
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar usuário:", error);
+      toast.error("Erro ao atualizar usuário. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleDeleteUser = (userId: string) => {
-    if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
+  const handleDeleteUser = async (userId: string) => {
+    const user = users.find((u) => u.id === userId);
+    if (!user) return;
 
-    const allUsers = JSON.parse(localStorage.getItem("users") || "[]");
-    const passwords = JSON.parse(localStorage.getItem("passwords") || "{}");
+    setConfirmDialog({
+      open: true,
+      title: "Excluir Usuário",
+      description: `Tem certeza que deseja excluir permanentemente o usuário ${user.name}? Esta ação não pode ser desfeita.`,
+      action: async () => {
+        try {
+          const result = await deleteUser(userId);
 
-    const userToDelete = allUsers.find((u: any) => u.id === userId);
-    if (userToDelete) {
-      delete passwords[userToDelete.email];
-    }
+          if (result.success) {
+            toast.success("Usuário excluído com sucesso!");
+            await loadUsers();
+          } else {
+            toast.error(result.error || "Erro ao excluir usuário");
+          }
+        } catch (error) {
+          console.error("Erro ao excluir usuário:", error);
+          toast.error("Erro inesperado ao excluir usuário");
+        }
 
-    const updatedUsers = allUsers.filter((u: any) => u.id !== userId);
-
-    localStorage.setItem("users", JSON.stringify(updatedUsers));
-    localStorage.setItem("passwords", JSON.stringify(passwords));
-    loadUsers();
+        setConfirmDialog((prev) => ({ ...prev, open: false }));
+      },
+    });
   };
 
   const exportUsers = () => {
-    const dataStr = JSON.stringify(users, null, 2);
-    const dataBlob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "usuarios-exl-trading.json";
-    link.click();
+    try {
+      const exportData = users.map((user) => ({
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        experience: user.experience,
+        status: user.status,
+        createdAt: user.createdAt,
+      }));
+
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `usuarios-exl-trading-${
+        new Date().toISOString().split("T")[0]
+      }.json`;
+      link.click();
+
+      toast.success("Dados exportados com sucesso!");
+    } catch (error) {
+      console.error("Erro ao exportar usuários:", error);
+      toast.error("Erro ao exportar dados. Tente novamente.");
+    }
   };
 
-  const importUsers = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const validateImportData = (
+    data: any[]
+  ): { valid: ImportUser[]; errors: string[] } => {
+    const validUsers: ImportUser[] = [];
+    const errors: string[] = [];
+
+    data.forEach((user, index) => {
+      const lineNumber = index + 1;
+
+      if (!user.name || typeof user.name !== "string") {
+        errors.push(`Linha ${lineNumber}: Nome é obrigatório`);
+        return;
+      }
+
+      if (!user.email || typeof user.email !== "string") {
+        errors.push(`Linha ${lineNumber}: Email é obrigatório`);
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(user.email)) {
+        errors.push(`Linha ${lineNumber}: Email inválido (${user.email})`);
+        return;
+      }
+
+      if (
+        !user.experience ||
+        !["iniciante", "intermediario", "avancado", "profissional"].includes(
+          user.experience
+        )
+      ) {
+        errors.push(
+          `Linha ${lineNumber}: Experiência deve ser: iniciante, intermediario, avancado ou profissional`
+        );
+        return;
+      }
+
+      // Verificar se email já existe
+      if (
+        users.some(
+          (existingUser) =>
+            existingUser.email.toLowerCase() === user.email.toLowerCase()
+        )
+      ) {
+        errors.push(`Linha ${lineNumber}: Email já existe (${user.email})`);
+        return;
+      }
+
+      // Verificar duplicatas no próprio arquivo
+      if (
+        validUsers.some(
+          (validUser) =>
+            validUser.email.toLowerCase() === user.email.toLowerCase()
+        )
+      ) {
+        errors.push(
+          `Linha ${lineNumber}: Email duplicado no arquivo (${user.email})`
+        );
+        return;
+      }
+
+      validUsers.push({
+        name: user.name.trim(),
+        email: user.email.trim().toLowerCase(),
+        phone: user.phone?.trim() || "",
+        experience: user.experience,
+        password: user.password || "123456", // Senha padrão se não fornecida
+        status: user.status || "pending",
+      });
+    });
+
+    return { valid: validUsers, errors };
+  };
+
+  const importUsers = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Reset input
+    event.target.value = "";
+
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
-        const importedUsers = JSON.parse(e.target?.result as string);
-        const allUsers = JSON.parse(localStorage.getItem("users") || "[]");
-        const passwords = JSON.parse(localStorage.getItem("passwords") || "{}");
+        const importedData = JSON.parse(e.target?.result as string);
 
-        importedUsers.forEach((user: any) => {
-          if (!allUsers.find((u: any) => u.email === user.email)) {
-            user.id = `user-${Date.now()}-${Math.random()}`;
-            user.createdAt = new Date().toISOString();
-            allUsers.push(user);
-            passwords[user.email] = user.password || "123456";
+        if (!Array.isArray(importedData)) {
+          toast.error("Arquivo deve conter um array de usuários");
+          return;
+        }
+
+        if (importedData.length === 0) {
+          toast.error("Arquivo está vazio");
+          return;
+        }
+
+        const { valid: validUsers, errors } = validateImportData(importedData);
+
+        if (errors.length > 0) {
+          const errorMessage = errors.slice(0, 5).join("\n"); // Mostra apenas os primeiros 5 erros
+          const remaining =
+            errors.length > 5 ? `\n... e mais ${errors.length - 5} erros` : "";
+          toast.error(`Erros encontrados:\n${errorMessage}${remaining}`);
+          return;
+        }
+
+        if (validUsers.length === 0) {
+          toast.error("Nenhum usuário válido encontrado");
+          return;
+        }
+
+        setIsSubmitting(true);
+        let successCount = 0;
+        let errorCount = 0;
+
+        try {
+          if (isSupabaseConfigured) {
+            // Importar usando o sistema de registro
+            for (const userData of validUsers) {
+              try {
+                const success = await register({
+                  name: userData.name,
+                  email: userData.email,
+                  phone: userData.phone || "",
+                  experience: userData.experience,
+                  password: userData.password || "123456",
+                  avatar_url: null,
+                });
+
+                if (success) {
+                  successCount++;
+                } else {
+                  errorCount++;
+                }
+              } catch (error) {
+                console.error(
+                  `Erro ao importar usuário ${userData.email}:`,
+                  error
+                );
+                errorCount++;
+              }
+            }
+          } else {
+            // Fallback para localStorage
+            const allUsers = JSON.parse(localStorage.getItem("users") || "[]");
+            const passwords = JSON.parse(
+              localStorage.getItem("passwords") || "{}"
+            );
+
+            for (const userData of validUsers) {
+              try {
+                const user = {
+                  id: `user-${Date.now()}-${Math.random()}`,
+                  name: userData.name,
+                  email: userData.email,
+                  phone: userData.phone,
+                  experience: userData.experience,
+                  status: userData.status,
+                  role: "user",
+                  createdAt: new Date().toISOString(),
+                  avatar_url: null,
+                };
+
+                allUsers.push(user);
+                passwords[user.email] = userData.password;
+                successCount++;
+              } catch (error) {
+                console.error(
+                  `Erro ao processar usuário ${userData.email}:`,
+                  error
+                );
+                errorCount++;
+              }
+            }
+
+            localStorage.setItem("users", JSON.stringify(allUsers));
+            localStorage.setItem("passwords", JSON.stringify(passwords));
           }
-        });
 
-        localStorage.setItem("users", JSON.stringify(allUsers));
-        localStorage.setItem("passwords", JSON.stringify(passwords));
-        loadUsers();
-        setAlertMessage("Usuários importados com sucesso!");
-        setAlertOpen(true);
+          await loadUsers();
+
+          if (successCount > 0 && errorCount === 0) {
+            toast.success(
+              `${successCount} usuário(s) importado(s) com sucesso!`
+            );
+          } else if (successCount > 0 && errorCount > 0) {
+            toast.warning(
+              `${successCount} usuário(s) importado(s), ${errorCount} com erro`
+            );
+          } else {
+            toast.error("Nenhum usuário pôde ser importado");
+          }
+        } catch (error) {
+          console.error("Erro durante importação:", error);
+          toast.error("Erro inesperado durante a importação");
+        }
       } catch (error) {
-        setAlertMessage(
-          "Erro ao importar usuários. Verifique o formato do arquivo."
+        console.error("Erro ao processar arquivo:", error);
+        toast.error(
+          "Erro ao processar arquivo. Verifique se é um JSON válido."
         );
-        setAlertOpen(true);
+      } finally {
+        setIsSubmitting(false);
       }
     };
+
     reader.readAsText(file);
   };
 
@@ -268,17 +616,33 @@ export function UserManagement() {
             id="import-users"
           />
           <Button
+            onClick={() => {
+              const link = document.createElement("a");
+              link.href = "/exemplo-importacao-usuarios.json";
+              link.download = "exemplo-importacao-usuarios.json";
+              link.click();
+            }}
+            variant="outline"
+            size="sm"
+            className="border-gray-500 text-gray-400 bg-transparent hover:bg-gray-600 hover:text-white"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Exemplo
+          </Button>
+          <Button
             onClick={() => document.getElementById("import-users")?.click()}
             variant="outline"
-            className="border-[#BBF717] text-white bg-transparent hover:bg-[#BBF717] hover:text-black"
+            disabled={isSubmitting}
+            className="border-[#BBF717] text-white bg-transparent hover:bg-[#BBF717] hover:text-black disabled:opacity-50"
           >
             <Upload className="w-4 h-4 mr-2" />
-            Importar
+            {isSubmitting ? "Importando..." : "Importar"}
           </Button>
           <Button
             onClick={exportUsers}
             variant="outline"
-            className="border-[#BBF717] text-white bg-transparent hover:bg-[#BBF717] hover:text-black"
+            disabled={isSubmitting}
+            className="border-[#BBF717] text-white bg-transparent hover:bg-[#BBF717] hover:text-black disabled:opacity-50"
           >
             <Download className="w-4 h-4 mr-2" />
             Exportar
@@ -347,9 +711,10 @@ export function UserManagement() {
                 />
                 <Button
                   onClick={handleAddUser}
-                  className="w-full bg-[#BBF717] text-black hover:bg-[#9FD615]"
+                  disabled={isSubmitting}
+                  className="w-full bg-[#BBF717] text-black hover:bg-[#9FD615] disabled:opacity-50"
                 >
-                  Adicionar Usuário
+                  {isSubmitting ? "Criando usuário..." : "Adicionar Usuário"}
                 </Button>
               </div>
             </DialogContent>
@@ -556,9 +921,10 @@ export function UserManagement() {
               </Select>
               <Button
                 onClick={handleUpdateUser}
-                className="w-full bg-[#BBF717] text-black hover:bg-[#9FD615]"
+                disabled={isSubmitting}
+                className="w-full bg-[#BBF717] text-black hover:bg-[#9FD615] disabled:opacity-50"
               >
-                Salvar Alterações
+                {isSubmitting ? "Salvando..." : "Salvar Alterações"}
               </Button>
             </div>
           </DialogContent>

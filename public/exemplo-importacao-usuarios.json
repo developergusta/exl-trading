@@ -1,0 +1,26 @@
+[
+  {
+    "name": "João Silva",
+    "email": "joao.silva@exemplo.com",
+    "phone": "(11) 99999-9999",
+    "experience": "intermediario",
+    "password": "123456",
+    "status": "pending"
+  },
+  {
+    "name": "Maria Santos",
+    "email": "maria.santos@exemplo.com",
+    "phone": "(11) 88888-8888",
+    "experience": "iniciante",
+    "password": "senha123",
+    "status": "approved"
+  },
+  {
+    "name": "Carlos Ferreira",
+    "email": "carlos.ferreira@exemplo.com",
+    "phone": "(11) 77777-7777",
+    "experience": "avancado",
+    "password": "password123",
+    "status": "pending"
+  }
+]

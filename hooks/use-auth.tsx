@@ -30,6 +30,16 @@ interface AuthContextType {
   getAllUsers: () => Promise<User[]>;
   approveUser: (userId: string) => Promise<void>;
   rejectUser: (userId: string) => Promise<void>;
+  updateUser: (
+    userId: string,
+    updates: {
+      name?: string;
+      phone?: string;
+      experience?: string;
+      status?: string;
+    }
+  ) => Promise<{ success: boolean; error?: string }>;
+  deleteUser: (userId: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -349,6 +359,79 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateUser = async (
+    userId: string,
+    updates: {
+      name?: string;
+      phone?: string;
+      experience?: string;
+      status?: string;
+    }
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (isSupabaseConfigured) {
+      try {
+        return await authService.updateUser(userId, updates);
+      } catch (error) {
+        console.error("Error updating user:", error);
+        return { success: false, error: "Erro interno do servidor" };
+      }
+    } else {
+      // Fallback to localStorage
+      try {
+        const users: User[] = JSON.parse(localStorage.getItem("users") || "[]");
+        const userIndex = users.findIndex((u) => u.id === userId);
+
+        if (userIndex !== -1) {
+          users[userIndex] = { ...users[userIndex], ...updates } as User;
+          localStorage.setItem("users", JSON.stringify(users));
+          return { success: true };
+        }
+
+        return { success: false, error: "Usuário não encontrado" };
+      } catch (error) {
+        console.error("Error updating user in localStorage:", error);
+        return { success: false, error: "Erro interno do servidor" };
+      }
+    }
+  };
+
+  const deleteUser = async (
+    userId: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (isSupabaseConfigured) {
+      try {
+        return await authService.deleteUser(userId);
+      } catch (error) {
+        console.error("Error deleting user:", error);
+        return { success: false, error: "Erro interno do servidor" };
+      }
+    } else {
+      // Fallback to localStorage
+      try {
+        const users: User[] = JSON.parse(localStorage.getItem("users") || "[]");
+        const passwords = JSON.parse(localStorage.getItem("passwords") || "{}");
+
+        const userToDelete = users.find((u) => u.id === userId);
+        if (!userToDelete) {
+          return { success: false, error: "Usuário não encontrado" };
+        }
+
+        // Remove from users array
+        const updatedUsers = users.filter((u) => u.id !== userId);
+        // Remove password
+        delete passwords[userToDelete.email];
+
+        localStorage.setItem("users", JSON.stringify(updatedUsers));
+        localStorage.setItem("passwords", JSON.stringify(passwords));
+
+        return { success: true };
+      } catch (error) {
+        console.error("Error deleting user from localStorage:", error);
+        return { success: false, error: "Erro interno do servidor" };
+      }
+    }
+  };
+
   const isAdmin = user?.role === "admin";
 
   return (
@@ -365,6 +448,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         getAllUsers,
         approveUser,
         rejectUser,
+        updateUser,
+        deleteUser,
       }}
     >
       {children}

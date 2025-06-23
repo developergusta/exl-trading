@@ -37,7 +37,7 @@ export type Database = {
           name: string;
           phone: string | null;
           experience: string;
-          status: "pending" | "approved" | "rejected";
+          status: "pending" | "approved" | "rejected" | "deleted";
           role: "user" | "admin";
           created_at: string;
           updated_at: string;
@@ -47,7 +47,7 @@ export type Database = {
           name: string;
           phone?: string | null;
           experience: string;
-          status?: "pending" | "approved" | "rejected";
+          status?: "pending" | "approved" | "rejected" | "deleted";
           role?: "user" | "admin";
           created_at?: string;
           updated_at?: string;
@@ -57,7 +57,7 @@ export type Database = {
           name?: string;
           phone?: string | null;
           experience?: string;
-          status?: "pending" | "approved" | "rejected";
+          status?: "pending" | "approved" | "rejected" | "deleted";
           role?: "user" | "admin";
           created_at?: string;
           updated_at?: string;
@@ -217,7 +217,7 @@ export interface User {
   phone: string | null;
   avatar_url: string | null;
   experience: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "deleted";
   role: "user" | "admin";
   createdAt: string;
 }

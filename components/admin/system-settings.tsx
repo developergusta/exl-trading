@@ -338,7 +338,7 @@ export function SystemSettings() {
             <Button
               onClick={() => window.location.reload()}
               variant="outline"
-              className="border-[#555] text-white hover:bg-[#2C2C2C]"
+              className="border-[#555] bg-[#2C2C2C] text-gray-300 hover:bg-[#2C2C2C] hover:text-white"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Recarregar Sistema
