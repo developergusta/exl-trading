@@ -37,6 +37,7 @@ interface AuthContextType {
       phone?: string;
       experience?: string;
       status?: string;
+      avatar_url?: string;
     }
   ) => Promise<{ success: boolean; error?: string }>;
   deleteUser: (userId: string) => Promise<{ success: boolean; error?: string }>;
@@ -366,6 +367,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       phone?: string;
       experience?: string;
       status?: string;
+      avatar_url?: string;
     }
   ): Promise<{ success: boolean; error?: string }> => {
     if (isSupabaseConfigured) {

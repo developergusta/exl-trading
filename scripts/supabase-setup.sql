@@ -401,3 +401,35 @@ $$ language plpgsql security definer;
 create trigger on_auth_user_created
 after insert on auth.users
 for each row execute procedure public.handle_new_user();
+
+-- CONFIGURAÇÃO DO BUCKET PARA AVATARES
+-- Criar bucket 'avatares' para imagens de perfil dos usuários
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('avatares', 'avatares', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Políticas para o bucket de avatares
+-- 1. Qualquer usuário autenticado pode fazer upload de sua própria imagem
+CREATE POLICY "Users can upload their own avatar" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'avatares' 
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+-- 2. Qualquer usuário autenticado pode atualizar sua própria imagem
+CREATE POLICY "Users can update their own avatar" ON storage.objects
+  FOR UPDATE USING (
+    bucket_id = 'avatares' 
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+-- 3. Qualquer usuário autenticado pode deletar sua própria imagem
+CREATE POLICY "Users can delete their own avatar" ON storage.objects
+  FOR DELETE USING (
+    bucket_id = 'avatares' 
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+-- 4. Todos podem visualizar avatares (bucket público)
+CREATE POLICY "Avatar images are publicly accessible" ON storage.objects
+  FOR SELECT USING (bucket_id = 'avatares');

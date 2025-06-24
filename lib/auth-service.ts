@@ -120,7 +120,7 @@ export class AuthService {
           status: profile.status,
           role: profile.role,
           createdAt: profile.created_at,
-          avatar_url: null,
+          avatar_url: profile.avatar_url || null,
         };
         return { success: true, user };
       }
@@ -134,7 +134,7 @@ export class AuthService {
         status: profile.status,
         role: profile.role,
         createdAt: profile.created_at,
-        avatar_url: null,
+        avatar_url: profile.avatar_url || null,
       };
 
       return { success: true, user };
@@ -231,7 +231,7 @@ export class AuthService {
         status: profile.status,
         role: profile.role,
         createdAt: profile.created_at,
-        avatar_url: null,
+        avatar_url: profile.avatar_url || null,
       };
 
       // Verifica se os dados do usuário são válidos
@@ -278,7 +278,7 @@ export class AuthService {
             status: profile.status,
             role: profile.role,
             createdAt: profile.created_at,
-            avatar_url: null,
+            avatar_url: profile.avatar_url || null,
           });
         }
       }
@@ -371,7 +371,7 @@ export class AuthService {
           status: profile.status,
           role: profile.role,
           createdAt: profile.created_at,
-          avatar_url: null,
+          avatar_url: profile.avatar_url || null,
         }));
 
       return users;
@@ -389,6 +389,7 @@ export class AuthService {
       phone?: string;
       experience?: string;
       status?: string;
+      avatar_url?: string;
     }
   ): Promise<{ success: boolean; error?: string }> {
     if (!isSupabaseConfigured || !supabase) {
