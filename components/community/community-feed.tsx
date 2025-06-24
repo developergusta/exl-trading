@@ -18,14 +18,16 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { CommentSection } from "./comment-section";
 
 export function CommunityFeed() {
   const { user } = useAuth();
-  const { posts, addPost, toggleLike, addComment, isLoading } = useCommunity();
+  const { posts, addPost, toggleLike, isLoading } = useCommunity();
   const [newPost, setNewPost] = useState("");
   const [isPosting, setIsPosting] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [likingPosts, setLikingPosts] = useState<Set<string>>(new Set());
+  const [openComments, setOpenComments] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,6 +91,18 @@ export function CommunityFeed() {
 
     // Executa o toggle like
     await toggleLike(postId);
+  };
+
+  const toggleComments = (postId: string) => {
+    setOpenComments((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
   };
 
   const getInitials = (name: string) => {
@@ -320,12 +334,24 @@ export function CommunityFeed() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="flex items-center gap-2 text-gray-500 hover:text-blue-500 transition-colors duration-200"
+                    onClick={() => toggleComments(post.id)}
+                    className={`flex items-center gap-2 transition-colors duration-200 ${
+                      openComments.has(post.id)
+                        ? "text-blue-500"
+                        : "text-gray-500 hover:text-blue-500"
+                    }`}
                   >
                     <MessageCircle className="w-4 h-4" />
                     <span>{post.comments}</span>
                   </Button>
                 </div>
+
+                {/* Comments Section */}
+                <CommentSection
+                  postId={post.id}
+                  isOpen={openComments.has(post.id)}
+                  onClose={() => toggleComments(post.id)}
+                />
               </CardContent>
             </Card>
           ))

@@ -18,6 +18,18 @@ interface TradingData {
   tradeCount: number;
 }
 
+interface CommunityComment {
+  id: string;
+  postId: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar: string;
+  content: string;
+  parentId?: string;
+  createdAt: string;
+  replies?: CommunityComment[];
+}
+
 interface CommunityPost {
   id: string;
   content: string;
@@ -53,6 +65,8 @@ interface DatabasePost {
 interface CommunityContextType {
   posts: CommunityPost[];
   isLoading: boolean;
+  comments: Record<string, CommunityComment[]>;
+  commentsLoading: Record<string, boolean>;
   addPost: (
     post: Omit<
       CommunityPost,
@@ -61,8 +75,14 @@ interface CommunityContextType {
     file?: File
   ) => Promise<void>;
   toggleLike: (postId: string) => Promise<void>;
-  addComment: (postId: string, comment: string) => Promise<void>;
+  addComment: (
+    postId: string,
+    content: string,
+    parentId?: string
+  ) => Promise<void>;
+  getComments: (postId: string) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
+  deleteComment: (commentId: string, postId: string) => Promise<void>;
 }
 
 const CommunityContext = createContext<CommunityContextType | undefined>(
@@ -73,6 +93,12 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [comments, setComments] = useState<Record<string, CommunityComment[]>>(
+    {}
+  );
+  const [commentsLoading, setCommentsLoading] = useState<
+    Record<string, boolean>
+  >({});
 
   const fetchPosts = async () => {
     try {
@@ -281,19 +307,102 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addComment = async (postId: string, comment: string) => {
+  const getComments = async (postId: string) => {
+    if (!supabase) return;
+
+    try {
+      setCommentsLoading((prev) => ({ ...prev, [postId]: true }));
+
+      const { data: commentsData, error } = await supabase
+        .from("community_comments")
+        .select(
+          `
+          *,
+          author:author_id (
+            id,
+            name,
+            avatar_url
+          )
+        `
+        )
+        .eq("post_id", postId)
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+
+      const formattedComments: CommunityComment[] = (commentsData || []).map(
+        (comment: any) => ({
+          id: comment.id,
+          postId: comment.post_id,
+          authorId: comment.author_id,
+          authorName: comment.author?.name || "Usuário",
+          authorAvatar: comment.author?.avatar_url || "/placeholder-user.jpg",
+          content: comment.content,
+          parentId: comment.parent_id,
+          createdAt: comment.created_at,
+        })
+      );
+
+      // Organizar comentários com replies
+      const commentsWithReplies = formattedComments
+        .filter((comment) => !comment.parentId)
+        .map((comment) => ({
+          ...comment,
+          replies: formattedComments.filter(
+            (reply) => reply.parentId === comment.id
+          ),
+        }));
+
+      setComments((prev) => ({ ...prev, [postId]: commentsWithReplies }));
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+    } finally {
+      setCommentsLoading((prev) => ({ ...prev, [postId]: false }));
+    }
+  };
+
+  const addComment = async (
+    postId: string,
+    content: string,
+    parentId?: string
+  ) => {
     if (!user || !supabase) return;
 
     try {
-      const post = posts.find((p) => p.id === postId);
-      if (!post) return;
+      const { error } = await supabase.from("community_comments").insert({
+        post_id: postId,
+        author_id: user.id,
+        content,
+        parent_id: parentId || null,
+      });
 
-      await supabase
-        .from("community_posts")
-        .update({ comments_count: post.comments + 1 })
-        .eq("id", postId);
+      if (error) throw error;
+
+      // Recarregar comentários após adicionar
+      await getComments(postId);
     } catch (error) {
       console.error("Error adding comment:", error);
+      throw error;
+    }
+  };
+
+  const deleteComment = async (commentId: string, postId: string) => {
+    if (!user || !supabase) return;
+
+    try {
+      const { error } = await supabase
+        .from("community_comments")
+        .delete()
+        .eq("id", commentId)
+        .eq("author_id", user.id);
+
+      if (error) throw error;
+
+      // Recarregar comentários após deletar
+      await getComments(postId);
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      throw error;
     }
   };
 
@@ -321,10 +430,14 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       value={{
         posts,
         isLoading,
+        comments,
+        commentsLoading,
         addPost,
         toggleLike,
         addComment,
+        getComments,
         deletePost,
+        deleteComment,
       }}
     >
       {children}
