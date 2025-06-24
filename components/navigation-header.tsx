@@ -28,31 +28,39 @@ export function NavigationHeader({
   };
 
   return (
-    <div className="flex justify-between items-center mb-8 p-5 bg-[#1C1C1C] border-b border-[#2C2C2C]">
-      <div className="flex items-center gap-4">
-        {showBackButton && (
-          <Button
-            onClick={handleBack}
-            className="bg-[#2C2C2C] text-[#BBF717] hover:bg-[#3C3C3C]"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar ao Hub
-          </Button>
-        )}
-        {title && <h1 className="text-2xl font-bold text-white">{title}</h1>}
-      </div>
+    <div className="sticky top-0 z-10 bg-[#1C1C1C] border-b border-[#2C2C2C] shadow-lg">
+      <div className="flex justify-between items-center p-4 max-w-screen-xl mx-auto">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          {showBackButton && (
+            <Button
+              onClick={handleBack}
+              size="sm"
+              className="bg-[#2C2C2C] text-[#BBF717] hover:bg-[#3C3C3C] flex-shrink-0"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Voltar ao Hub</span>
+              <span className="sm:hidden">Voltar</span>
+            </Button>
+          )}
+          {title && (
+            <h1 className="text-lg sm:text-2xl font-bold text-white truncate">
+              {title}
+            </h1>
+          )}
+        </div>
 
-      <div className="flex items-center gap-3">
-        {isAdmin && (
-          <Button
-            onClick={handleAdminClick}
-            size="sm"
-            className="bg-[#BBF717] text-black hover:bg-[#9FD615] border-none font-medium"
-          >
-            <Settings className="h-4 w-4 mr-2" />
-            Admin
-          </Button>
-        )}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {isAdmin && (
+            <Button
+              onClick={handleAdminClick}
+              size="sm"
+              className="bg-[#BBF717] text-black hover:bg-[#9FD615] border-none font-medium"
+            >
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline ml-2">Admin</span>
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

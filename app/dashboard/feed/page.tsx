@@ -42,9 +42,9 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0E0E0E]">
+    <div className="min-h-screen bg-[#0E0E0E] flex flex-col">
       <NavigationHeader title="Atualizações" />
-      <div className="p-4 bg-[#0E0E0E] min-h-screen pb-20">
+      <div className="flex-1 p-4 pb-24 overflow-y-auto">
         <CompanyFeed />
       </div>
       <MobileNavigation />
