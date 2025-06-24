@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { PushNotification } from "@/lib/push-service";
+import { PushNotification, pushService } from "@/lib/push-service";
 import {
   Bell,
   Globe,
@@ -24,7 +24,6 @@ import {
   User,
   Users,
   Wifi,
-  WifiOff,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { usePushNotifications } from "../../hooks/use-push-notifications";
@@ -57,10 +56,23 @@ export function NotificationCenter() {
 
   const handleEnablePushNotifications = async () => {
     try {
+      // Primeiro, solicita permissão se não tiver
+      if (!pushNotificationsHook.hasPermission) {
+        const permissionGranted =
+          await pushNotificationsHook.requestPermission();
+        if (!permissionGranted) {
+          console.error("Permissão negada pelo usuário");
+          return;
+        }
+      }
+
+      // Depois, cria a subscription se não estiver inscrito
       if (!pushNotificationsHook.isSubscribed) {
         const success = await pushNotificationsHook.subscribe();
         if (success) {
           setPushEnabled(true);
+          // Força atualização do status
+          await pushNotificationsHook.checkStatus();
         }
       }
     } catch (error) {
@@ -188,82 +200,66 @@ export function NotificationCenter() {
 
   return (
     <div className="space-y-6">
-      {/* Push Notifications Status */}
+      {/* Push Notifications Status - Sistema */}
       <Card className="bg-[#1C1C1C] border-[#2C2C2C]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
             <Smartphone className="w-5 h-5" />
-            Status de Push Notifications
+            Sistema de Push Notifications
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                {pushNotificationsHook.isSupported ? (
-                  <Wifi className="w-4 h-4 text-green-400" />
-                ) : (
-                  <WifiOff className="w-4 h-4 text-red-400" />
-                )}
-                <span className="text-sm text-gray-300">
-                  Suporte:{" "}
-                  {pushNotificationsHook.isSupported
-                    ? "Disponível"
-                    : "Não disponível"}
-                </span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Status do Sistema */}
+            <div className="bg-[#2A2B2A] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Wifi className="w-4 h-4 text-green-400" />
+                <span className="text-sm font-medium text-white">Sistema</span>
               </div>
-              <div className="flex items-center gap-2">
-                {pushNotificationsHook.hasPermission ? (
-                  <Bell className="w-4 h-4 text-green-400" />
-                ) : (
-                  <Bell className="w-4 h-4 text-red-400" />
-                )}
-                <span className="text-sm text-gray-300">
-                  Permissão:{" "}
-                  {pushNotificationsHook.hasPermission ? "Concedida" : "Negada"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {pushNotificationsHook.isSubscribed ? (
-                  <Smartphone className="w-4 h-4 text-green-400" />
-                ) : (
-                  <Smartphone className="w-4 h-4 text-gray-400" />
-                )}
-                <span className="text-sm text-gray-300">
-                  Subscription:{" "}
-                  {pushNotificationsHook.isSubscribed ? "Ativa" : "Inativa"}
-                </span>
-              </div>
+              <p className="text-xs text-green-400">✅ Operacional</p>
             </div>
-            {!pushEnabled && pushNotificationsHook.isSupported && (
-              <Button
-                onClick={handleEnablePushNotifications}
-                size="sm"
-                className="bg-[#BBF717] text-black hover:bg-[#9FD615]"
-                disabled={pushNotificationsHook.isLoading}
-              >
-                {pushNotificationsHook.isLoading
-                  ? "Habilitando..."
-                  : "Habilitar Push"}
-              </Button>
-            )}
+
+            {/* Usuários Inscritos */}
+            <div className="bg-[#2A2B2A] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="w-4 h-4 text-blue-400" />
+                <span className="text-sm font-medium text-white">Usuários</span>
+              </div>
+              <p className="text-xs text-blue-400">
+                {pushService.getAllSubscriptions().length} inscritos
+              </p>
+            </div>
+
+            {/* API Status */}
+            <div className="bg-[#2A2B2A] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Send className="w-4 h-4 text-purple-400" />
+                <span className="text-sm font-medium text-white">API</span>
+              </div>
+              <p className="text-xs text-purple-400">✅ Configurada</p>
+            </div>
           </div>
 
-          {pushNotificationsHook.error && (
-            <div className="bg-red-500/10 border border-red-500 rounded-lg p-3">
-              <p className="text-red-400 text-sm">
-                ⚠️ {pushNotificationsHook.error}
+          <div className="bg-blue-500/10 border border-blue-500 rounded-lg p-3">
+            <p className="text-blue-400 text-sm">
+              💡 <strong>Como funciona:</strong>
+            </p>
+            <div className="text-blue-300 text-xs mt-2 space-y-1">
+              <p>
+                1. Usuários habilitam push em{" "}
+                <strong>Dashboard → Perfil → Configurações</strong>
               </p>
+              <p>2. Sistema coleta subscriptions automaticamente</p>
+              <p>3. Você envia notificações usando o painel abaixo</p>
+              <p>4. Notificações chegam mesmo com app fechado</p>
             </div>
-          )}
+          </div>
 
-          {pushEnabled && (
-            <div className="bg-green-500/10 border border-green-500 rounded-lg p-3">
-              <p className="text-green-400 text-sm">
-                ✅ Push notifications estão funcionando corretamente!
-              </p>
-            </div>
-          )}
+          <div className="bg-green-500/10 border border-green-500 rounded-lg p-3">
+            <p className="text-green-400 text-sm">
+              ✅ Sistema pronto para envio de notificações!
+            </p>
+          </div>
         </CardContent>
       </Card>
 

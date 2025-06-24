@@ -67,7 +67,10 @@ export class PushService {
       throw new Error("Push notifications não são suportados neste navegador");
     }
 
+    console.log("Solicitando permissão para notificações...");
     const permission = await Notification.requestPermission();
+    console.log("Permissão recebida:", permission);
+
     return permission === "granted";
   }
 

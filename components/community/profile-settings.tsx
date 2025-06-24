@@ -1,5 +1,6 @@
 "use client";
 
+import { PushNotificationSetup } from "@/components/pwa/push-notification-setup";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -356,6 +357,9 @@ export function ProfileSettings() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Configurações de Notificações Push */}
+      <PushNotificationSetup />
     </div>
   );
 }
