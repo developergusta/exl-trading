@@ -15,7 +15,19 @@ export const supabase =
     ? (() => {
         console.log("Creating Supabase client...");
         try {
-          const client = createClient(supabaseUrl, supabaseAnonKey);
+          const client = createClient(supabaseUrl, supabaseAnonKey, {
+            auth: {
+              persistSession: true,
+              autoRefreshToken: true,
+              detectSessionInUrl: true,
+              flowType: "pkce",
+            },
+            global: {
+              headers: {
+                "X-Client-Info": "exl-trading-web",
+              },
+            },
+          });
           console.log("Supabase client created successfully");
           return client;
         } catch (error) {

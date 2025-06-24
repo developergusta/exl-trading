@@ -14,10 +14,9 @@ if ("serviceWorker" in navigator) {
             newWorker.state === "installed" &&
             navigator.serviceWorker.controller
           ) {
-            // Novo Service Worker disponível
-            if (confirm("Nova versão disponível! Deseja atualizar agora?")) {
-              window.location.reload();
-            }
+            // Novo Service Worker disponível - não força reload automático
+            console.log("Nova versão do Service Worker disponível");
+            // Opcionalmente pode mostrar uma notificação ao usuário
           }
         });
       });
@@ -40,18 +39,6 @@ if ("serviceWorker" in navigator) {
     }
   }
 
-  // Função para lidar com reconexão
-  async function handleReconnection() {
-    if (navigator.onLine) {
-      // Tenta registrar novamente o Service Worker
-      const success = await registerServiceWorker();
-      if (success) {
-        // Se conseguiu registrar, recarrega a página
-        window.location.reload();
-      }
-    }
-  }
-
   // Inicialização
   window.addEventListener("load", async () => {
     await registerServiceWorker();
@@ -60,30 +47,22 @@ if ("serviceWorker" in navigator) {
     setInterval(checkForUpdates, 30 * 60 * 1000);
   });
 
-  // Gerenciamento de estado online/offline
+  // Gerenciamento de estado online/offline - SEM RELOAD AUTOMÁTICO
   let wasOffline = !navigator.onLine;
 
   window.addEventListener("online", async () => {
     if (wasOffline) {
       wasOffline = false;
-      await handleReconnection();
+      console.log("Conexão restaurada");
+      // Não recarrega mais automaticamente
     }
   });
 
   window.addEventListener("offline", () => {
     wasOffline = true;
+    console.log("Conexão perdida");
   });
 
-  // Adiciona listener para erros de rede
-  window.addEventListener("unhandledrejection", async (event) => {
-    if (
-      event.reason &&
-      event.reason.message &&
-      (event.reason.message.includes("fetch") ||
-        event.reason.message.includes("network"))
-    ) {
-      // Tenta reconectar em caso de erros de rede
-      await handleReconnection();
-    }
-  });
+  // Remove listener que causava reloads desnecessários
+  // O erro de fetch será tratado pela aplicação
 }

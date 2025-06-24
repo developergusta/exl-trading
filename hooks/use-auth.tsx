@@ -1,6 +1,7 @@
 "use client";
 
 import { authService, type RegisterData } from "@/lib/auth-service";
+import { connectionMonitor } from "@/lib/connection-monitor";
 import { isSupabaseConfigured, type User } from "@/lib/supabase";
 import {
   createContext,
@@ -51,6 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Inicializa o monitor de conexão
+    if (typeof window !== "undefined") {
+      connectionMonitor.startMonitoring();
+    }
+
     if (isSupabaseConfigured) {
       // Initialize with Supabase
       initializeSupabaseAuth();
@@ -58,13 +64,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Fallback to localStorage
       initializeLocalAuth();
     }
+
+    // Cleanup na desmontagem
+    return () => {
+      if (typeof window !== "undefined") {
+        connectionMonitor.stopMonitoring();
+      }
+    };
   }, []);
 
   const initializeSupabaseAuth = async () => {
     try {
-      let retryCount = 0;
-      const maxRetries = 3;
-
       const initializeAuth = async () => {
         const currentUser = await authService.getCurrentUser();
         if (currentUser) {
@@ -80,20 +90,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await initializeAuth();
 
       // Listen to auth state changes
-      const unsubscribe = authService.onAuthStateChange(async (user) => {
-        if (user) {
-          setUser(user);
+      const unsubscribe = authService.onAuthStateChange(async (authUser) => {
+        if (authUser) {
+          setUser(authUser);
           setIsAuthenticated(true);
         } else {
-          // Se perdeu a autenticação, tenta reconectar
-          if (retryCount < maxRetries) {
-            retryCount++;
-            console.log(`Tentando reconectar... Tentativa ${retryCount}`);
-            await initializeAuth();
-          } else {
-            setUser(null);
-            setIsAuthenticated(false);
-          }
+          // Perdeu autenticação - limpa estado mas não tenta reconectar automaticamente
+          console.log("AuthProvider: User session lost");
+          setUser(null);
+          setIsAuthenticated(false);
         }
       });
 
@@ -102,7 +107,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Erro ao inicializar auth:", error);
       setIsLoading(false);
-      initializeLocalAuth();
+      // Fallback para localStorage apenas se Supabase falhar completamente
+      if (!navigator.onLine) {
+        console.log("Offline detected, using localStorage fallback");
+        initializeLocalAuth();
+      }
     }
   };
 

@@ -170,19 +170,68 @@ export class AuthService {
 
     try {
       // Primeiro verifica se há uma sessão válida
-      const { data: session } = await supabase.auth.getSession();
+      const { data: session, error: sessionError } =
+        await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.warn("AuthService: Session error:", sessionError);
+        // Não força logout em caso de erro de sessão - pode ser temporário
+        return null;
+      }
+
       if (!session?.session?.access_token) {
+        console.log("AuthService: No valid session found");
         return null;
       }
 
       // Então tenta obter o usuário
       let authUser;
       try {
-        const { data } = await supabase.auth.getUser();
-        authUser = data.user;
+        const { data, error: userError } = await supabase.auth.getUser();
+        if (userError) {
+          console.warn("AuthService: User fetch error:", userError);
+          // Se for erro de token expirado, tenta refresh
+          if (
+            userError.message?.includes("Invalid JWT") ||
+            userError.message?.includes("expired")
+          ) {
+            console.log("AuthService: Token expired, attempting refresh...");
+            const { data: refreshData, error: refreshError } =
+              await supabase.auth.refreshSession();
+            if (refreshError) {
+              console.error("AuthService: Refresh failed:", refreshError);
+              await this.logout();
+              return null;
+            }
+            // Tenta novamente após refresh
+            const { data: retryData, error: retryError } =
+              await supabase.auth.getUser();
+            if (retryError) {
+              console.error(
+                "AuthService: Retry after refresh failed:",
+                retryError
+              );
+              await this.logout();
+              return null;
+            }
+            authUser = retryData.user;
+          } else {
+            // Para outros tipos de erro, não força logout imediatamente
+            console.warn(
+              "AuthService: Non-critical user error, returning null"
+            );
+            return null;
+          }
+        } else {
+          authUser = data.user;
+        }
       } catch (error) {
-        console.error("AuthService: Error in getUser:", error);
-        // Se falhar em obter o usuário, limpa a sessão
+        console.error("AuthService: Unexpected error in getUser:", error);
+        // Só força logout se for erro crítico, não erro de rede
+        if (error instanceof TypeError && error.message?.includes("fetch")) {
+          console.warn("AuthService: Network error, not forcing logout");
+          return null;
+        }
         await this.logout();
         return null;
       }
@@ -201,11 +250,23 @@ export class AuthService {
           .single();
       } catch (error) {
         console.error("AuthService: Error getting profile:", error);
+        // Se for erro de rede, não força logout
+        if (error instanceof TypeError && error.message?.includes("fetch")) {
+          console.warn(
+            "AuthService: Network error getting profile, not forcing logout"
+          );
+          return null;
+        }
         await this.logout();
         return null;
       }
 
       if (profileResult.error || !profileResult.data) {
+        console.warn(
+          "AuthService: Profile not found or error:",
+          profileResult.error
+        );
+        // Se perfil não existe, força logout
         await this.logout();
         return null;
       }
@@ -244,7 +305,10 @@ export class AuthService {
       return user;
     } catch (error) {
       console.error("AuthService: Unexpected error:", error);
-      await this.logout();
+      // Só força logout se não for erro de rede
+      if (!(error instanceof TypeError && error.message?.includes("fetch"))) {
+        await this.logout();
+      }
       return null;
     }
   }

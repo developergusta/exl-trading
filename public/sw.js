@@ -20,6 +20,18 @@ const NO_CACHE_PATTERNS = [
   /chrome-extension/,
   /^chrome-/,
   /extension/,
+  /_next\/static.*webpack/, // Fix para erro 404 do webpack
+  /hot-reload/,
+  /sockjs/,
+];
+
+// URLs que devem sempre buscar da rede (bypass completo do SW)
+const BYPASS_PATTERNS = [
+  /supabase\.co/,
+  /supabase\.io/,
+  /amazonaws\.com/,
+  /\/api\//,
+  /\/auth\//,
 ];
 
 // Verifica se a URL deve ser cacheada
@@ -29,6 +41,11 @@ function shouldCache(url) {
 
   // Verifica se a URL não corresponde a nenhum padrão de não-cache
   return !NO_CACHE_PATTERNS.some((pattern) => pattern.test(url));
+}
+
+// Verifica se deve fazer bypass completo do SW
+function shouldBypass(url) {
+  return BYPASS_PATTERNS.some((pattern) => pattern.test(url));
 }
 
 self.addEventListener("install", (event) => {
@@ -63,31 +80,43 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // BYPASS COMPLETO para URLs críticas (Supabase, APIs, etc.)
+  if (shouldBypass(event.request.url)) {
+    return;
+  }
+
   // Ignora requisições que não devem ser cacheadas
   if (!shouldCache(event.request.url)) {
+    return;
+  }
+
+  // Only handle GET requests
+  if (event.request.method !== "GET") {
     return;
   }
 
   event.respondWith(
     caches.match(event.request).then((response) => {
       if (response) {
-        // Retorna do cache e atualiza em background
-        fetch(event.request)
-          .then((networkResponse) => {
-            if (networkResponse.ok) {
-              caches
-                .open(CACHE_NAME)
-                .then((cache) => {
-                  cache.put(event.request, networkResponse);
-                })
-                .catch((error) => {
-                  console.warn("Erro ao atualizar cache:", error);
-                });
-            }
-          })
-          .catch(() => {
-            // Ignora erros de rede ao atualizar cache
-          });
+        // Retorna do cache e atualiza em background para static assets
+        if (STATIC_ASSETS.some((asset) => event.request.url.includes(asset))) {
+          fetch(event.request)
+            .then((networkResponse) => {
+              if (networkResponse.ok) {
+                caches
+                  .open(CACHE_NAME)
+                  .then((cache) => {
+                    cache.put(event.request, networkResponse.clone());
+                  })
+                  .catch((error) => {
+                    console.warn("Erro ao atualizar cache:", error);
+                  });
+              }
+            })
+            .catch(() => {
+              // Ignora erros de rede ao atualizar cache
+            });
+        }
         return response;
       }
 
@@ -98,18 +127,21 @@ self.addEventListener("fetch", (event) => {
             return response;
           }
 
-          // Clona a resposta antes de cachear
-          const responseToCache = response.clone();
+          // Só cacheia static assets
+          if (
+            STATIC_ASSETS.some((asset) => event.request.url.includes(asset))
+          ) {
+            const responseToCache = response.clone();
 
-          // Tenta cachear em background
-          caches
-            .open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            })
-            .catch((error) => {
-              console.warn("Erro ao cachear resposta:", error);
-            });
+            caches
+              .open(CACHE_NAME)
+              .then((cache) => {
+                cache.put(event.request, responseToCache);
+              })
+              .catch((error) => {
+                console.warn("Erro ao cachear resposta:", error);
+              });
+          }
 
           return response;
         })
@@ -118,7 +150,7 @@ self.addEventListener("fetch", (event) => {
           if (event.request.mode === "navigate") {
             return caches.match(OFFLINE_URL);
           }
-          return new Response("Offline");
+          return new Response("Offline", { status: 503 });
         });
     })
   );
