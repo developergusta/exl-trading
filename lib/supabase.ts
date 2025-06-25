@@ -10,32 +10,13 @@ console.log("Supabase Config:", {
 });
 
 // Create Supabase client only if environment variables are available
-export const supabase =
-  supabaseUrl && supabaseAnonKey
-    ? (() => {
-        console.log("Creating Supabase client...");
-        try {
-          const client = createClient(supabaseUrl, supabaseAnonKey, {
-            auth: {
-              persistSession: true,
-              autoRefreshToken: true,
-              detectSessionInUrl: true,
-              flowType: "pkce",
-            },
-            global: {
-              headers: {
-                "X-Client-Info": "exl-trading-web",
-              },
-            },
-          });
-          console.log("Supabase client created successfully");
-          return client;
-        } catch (error) {
-          console.error("Error creating Supabase client:", error);
-          return null;
-        }
-      })()
-    : null;
+export const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  },
+});
 
 // Flag to check if Supabase is configured
 export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);

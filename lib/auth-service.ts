@@ -16,6 +16,9 @@ export interface LoginData {
 }
 
 export class AuthService {
+  private isProcessingAuthChange = false; // Flag para evitar calls simultâneos
+  private currentUser: User | null = null; // Cache do usuário atual
+
   // Register a new user
   async register(
     data: RegisterData
@@ -153,7 +156,8 @@ export class AuthService {
       console.error("Error in logout:", error);
     }
 
-    // Limpa qualquer dado local
+    // Limpa cache e dados locais
+    this.currentUser = null;
     try {
       localStorage.removeItem("supabase.auth.token");
       sessionStorage.clear();
@@ -167,6 +171,16 @@ export class AuthService {
     if (!isSupabaseConfigured || !supabase) {
       return null;
     }
+
+    // Evita chamadas simultâneas que podem causar problemas
+    if (this.isProcessingAuthChange) {
+      console.log(
+        "AuthService: getCurrentUser já em processamento, aguardando..."
+      );
+      return null;
+    }
+
+    this.isProcessingAuthChange = true;
 
     try {
       // Primeiro verifica se há uma sessão válida
@@ -302,6 +316,8 @@ export class AuthService {
         return null;
       }
 
+      // Atualiza cache antes de retornar
+      this.currentUser = user;
       return user;
     } catch (error) {
       console.error("AuthService: Unexpected error:", error);
@@ -310,6 +326,9 @@ export class AuthService {
         await this.logout();
       }
       return null;
+    } finally {
+      // Sempre reseta a flag no final
+      this.isProcessingAuthChange = false;
     }
   }
 
@@ -511,16 +530,63 @@ export class AuthService {
     }
   }
 
-  // Listen to auth state changes
+  // Listen to auth state changes - ÚNICO método para isso
   onAuthStateChange(callback: (user: User | null) => void) {
     if (!isSupabaseConfigured || !supabase) return () => {};
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log(`AuthService: Auth state changed - ${event}`);
+
+      // Ignora eventos de refresh automático do Supabase para evitar problemas
+      if (event === "TOKEN_REFRESHED") {
+        console.log("AuthService: Token refreshed, mantendo estado atual");
+        return; // Não atualiza o estado para evitar loops
+      }
+
+      // Para SIGNED_IN, verifica se é refresh automático ou login real
+      if (event === "SIGNED_IN" && session?.user) {
+        // Se já temos um usuário logado com mesmo ID, é refresh automático
+        if (this.currentUser && this.currentUser.id === session.user.id) {
+          console.log("AuthService: SIGNED_IN é refresh automático, ignorando");
+          return; // Não processa novamente o mesmo usuário
+        }
+
+        console.log("AuthService: SIGNED_IN é login real, processando");
+        try {
+          const user = await this.getCurrentUser();
+          this.currentUser = user; // Atualiza cache
+          callback(user);
+        } catch (error) {
+          console.error(
+            "AuthService: Erro ao obter usuário após SIGNED_IN:",
+            error
+          );
+          // Em caso de erro, não propaga para evitar quebrar a aplicação
+        }
+        return;
+      }
+
+      // Para SIGNED_OUT, sempre processa
+      if (event === "SIGNED_OUT" || !session?.user) {
+        console.log("AuthService: SIGNED_OUT detectado, limpando cache");
+        this.currentUser = null; // Limpa cache
+        callback(null);
+        return;
+      }
+
+      // Para outros eventos, verifica se há sessão válida
       if (session?.user) {
-        const user = await this.getCurrentUser();
-        callback(user);
+        try {
+          const user = await this.getCurrentUser();
+          callback(user);
+        } catch (error) {
+          console.error(
+            `AuthService: Erro ao processar evento ${event}:`,
+            error
+          );
+        }
       } else {
         callback(null);
       }

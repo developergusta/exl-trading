@@ -89,18 +89,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Primeira tentativa
       await initializeAuth();
 
-      // Listen to auth state changes
-      const unsubscribe = authService.onAuthStateChange(async (authUser) => {
-        if (authUser) {
-          setUser(authUser);
-          setIsAuthenticated(true);
-        } else {
-          // Perdeu autenticação - limpa estado mas não tenta reconectar automaticamente
-          console.log("AuthProvider: User session lost");
-          setUser(null);
-          setIsAuthenticated(false);
+      // Listen to auth state changes - CENTRALIZADO aqui no AuthProvider
+      const unsubscribe = authService.onAuthStateChange(
+        async (authUser: User | null) => {
+          if (authUser) {
+            setUser(authUser);
+            setIsAuthenticated(true);
+            // Notifica o connection monitor sobre mudança de auth
+            connectionMonitor.handleAuthStateChange("SIGNED_IN", true);
+          } else {
+            // Perdeu autenticação - limpa estado mas não tenta reconectar automaticamente
+            console.log("AuthProvider: User session lost");
+            setUser(null);
+            setIsAuthenticated(false);
+            // Notifica o connection monitor sobre mudança de auth
+            connectionMonitor.handleAuthStateChange("SIGNED_OUT", false);
+          }
         }
-      });
+      );
 
       setIsLoading(false);
       return unsubscribe;

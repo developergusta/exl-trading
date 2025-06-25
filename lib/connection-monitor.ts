@@ -26,19 +26,6 @@ export class ConnectionMonitor {
 
     // Heartbeat para verificar conectividade com Supabase
     this.startHeartbeat();
-
-    // Listener para mudanças de auth state que podem indicar problemas de conexão
-    if (supabase) {
-      supabase.auth.onAuthStateChange((event, session) => {
-        if (event === "TOKEN_REFRESHED") {
-          console.log("ConnectionMonitor: Token refreshed successfully");
-          this.notifyCallbacks(true);
-        } else if (event === "SIGNED_OUT") {
-          console.log("ConnectionMonitor: User signed out");
-          this.notifyCallbacks(false);
-        }
-      });
-    }
   }
 
   stopMonitoring() {
@@ -139,6 +126,19 @@ export class ConnectionMonitor {
         console.error("ConnectionMonitor: Error in callback:", error);
       }
     });
+  }
+
+  // Método para receber notificações de auth state do AuthProvider
+  handleAuthStateChange(event: string, isConnected: boolean) {
+    console.log(`ConnectionMonitor: Auth state change received - ${event}`);
+
+    if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+      console.log("ConnectionMonitor: User signed in or token refreshed");
+      this.notifyCallbacks(true);
+    } else if (event === "SIGNED_OUT") {
+      console.log("ConnectionMonitor: User signed out");
+      this.notifyCallbacks(false);
+    }
   }
 
   async forceReconnect(): Promise<boolean> {
