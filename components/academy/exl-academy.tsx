@@ -16,12 +16,28 @@ export function ExlAcademy() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [showCourseForm, setShowCourseForm] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<any>(null);
 
   const filteredCourses = courses.filter(
     (course) =>
       course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleEditCourse = (course: any) => {
+    setEditingCourse(course);
+    setShowCourseForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowCourseForm(false);
+    setEditingCourse(null);
+  };
+
+  const handleFormSave = () => {
+    refreshCourses();
+    handleCloseForm();
+  };
 
   if (selectedCourse) {
     return (
@@ -115,6 +131,8 @@ export function ExlAcademy() {
                   key={course.id}
                   course={course}
                   onClick={() => setSelectedCourse(course.id)}
+                  onEdit={() => handleEditCourse(course)}
+                  onDelete={() => refreshCourses()}
                 />
               ))}
             </div>
@@ -206,11 +224,9 @@ export function ExlAcademy() {
       {showCourseForm && (
         <CourseForm
           isOpen={showCourseForm}
-          onClose={() => setShowCourseForm(false)}
-          onSave={() => {
-            refreshCourses();
-            setShowCourseForm(false);
-          }}
+          onClose={handleCloseForm}
+          course={editingCourse}
+          onSave={handleFormSave}
         />
       )}
     </div>

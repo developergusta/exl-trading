@@ -20,12 +20,29 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAcademy } from "@/hooks/use-academy";
 import { Loader2, Youtube } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+interface CourseContent {
+  id: string;
+  course_id: string;
+  title: string;
+  description?: string | null;
+  content_type: "youtube" | "pdf" | "download";
+  content_url: string;
+  youtube_video_id?: string | null;
+  duration_minutes?: number | null;
+  order_index: number;
+  is_preview?: boolean | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 interface ContentFormProps {
   isOpen: boolean;
   onClose: () => void;
   courseId: string;
+  content?: CourseContent | null;
   onContentCreated: () => void;
 }
 
@@ -44,9 +61,10 @@ export function ContentForm({
   isOpen,
   onClose,
   courseId,
+  content,
   onContentCreated,
 }: ContentFormProps) {
-  const { createContent } = useAcademy();
+  const { createContent, updateContent } = useAcademy();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<ContentFormData>({
     title: "",
@@ -58,6 +76,24 @@ export function ContentForm({
     order_index: 1,
     is_preview: false,
   });
+
+  // Carrega os dados do conteúdo quando está editando
+  useEffect(() => {
+    if (content) {
+      setFormData({
+        title: content.title || "",
+        description: content.description || "",
+        content_type: content.content_type,
+        content_url: content.content_url || "",
+        youtube_video_id: content.youtube_video_id || "",
+        duration_minutes: content.duration_minutes || 0,
+        order_index: content.order_index || 1,
+        is_preview: content.is_preview || false,
+      });
+    } else {
+      resetForm();
+    }
+  }, [content]);
 
   const extractYouTubeVideoId = (url: string): string => {
     const regex =
@@ -102,18 +138,34 @@ export function ContentForm({
         is_active: true,
       };
 
-      const result = await createContent(contentData);
+      let result;
+      if (content) {
+        // Editando conteúdo existente
+        result = await updateContent(content.id, contentData);
+      } else {
+        // Criando novo conteúdo
+        result = await createContent(contentData);
+      }
 
       if (result) {
         onContentCreated();
         onClose();
         resetForm();
       } else {
-        alert("Erro ao criar conteúdo. Tente novamente.");
+        alert(
+          `Erro ao ${
+            content ? "atualizar" : "criar"
+          } conteúdo. Tente novamente.`
+        );
       }
     } catch (error) {
-      console.error("Erro ao criar conteúdo:", error);
-      alert("Erro ao criar conteúdo. Tente novamente.");
+      console.error(
+        `Erro ao ${content ? "atualizar" : "criar"} conteúdo:`,
+        error
+      );
+      alert(
+        `Erro ao ${content ? "atualizar" : "criar"} conteúdo. Tente novamente.`
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -144,10 +196,12 @@ export function ContentForm({
       <DialogContent className="sm:max-w-[600px] bg-[#1C1C1C] border-[#2C2C2C] text-white">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-white">
-            Adicionar Conteúdo
+            {content ? "Editar Conteúdo" : "Adicionar Conteúdo"}
           </DialogTitle>
           <DialogDescription className="text-gray-400">
-            Adicione um novo conteúdo ao curso
+            {content
+              ? "Edite as informações do conteúdo"
+              : "Adicione um novo conteúdo ao curso"}
           </DialogDescription>
         </DialogHeader>
 
@@ -198,27 +252,9 @@ export function ContentForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-[#2C2C2C] border-[#3C3C3C]">
-                <SelectItem
-                  value="youtube"
-                  className="text-white hover:bg-[#3C3C3C]"
-                >
-                  <div className="flex items-center gap-2">
-                    <Youtube className="w-4 h-4 text-red-500" />
-                    YouTube
-                  </div>
-                </SelectItem>
-                <SelectItem
-                  value="pdf"
-                  className="text-white hover:bg-[#3C3C3C]"
-                >
-                  📄 PDF
-                </SelectItem>
-                <SelectItem
-                  value="download"
-                  className="text-white hover:bg-[#3C3C3C]"
-                >
-                  📁 Download
-                </SelectItem>
+                <SelectItem value="youtube">YouTube</SelectItem>
+                <SelectItem value="pdf">PDF</SelectItem>
+                <SelectItem value="download">Download</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -227,33 +263,42 @@ export function ContentForm({
           <div className="space-y-2">
             <label className="text-sm font-medium text-white">
               {formData.content_type === "youtube"
-                ? "Link do YouTube"
-                : "URL do Conteúdo"}{" "}
-              *
+                ? "URL do YouTube *"
+                : formData.content_type === "pdf"
+                ? "URL do PDF *"
+                : "URL do Arquivo *"}
             </label>
-            <Input
-              type="url"
-              value={formData.content_url}
-              onChange={(e) => handleUrlChange(e.target.value)}
-              placeholder={
-                formData.content_type === "youtube"
-                  ? "https://www.youtube.com/watch?v=..."
-                  : "https://..."
-              }
-              className="bg-[#2C2C2C] border-[#3C3C3C] text-white"
-              required
-            />
+            <div className="relative">
+              {formData.content_type === "youtube" && (
+                <Youtube className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              )}
+              <Input
+                type="url"
+                value={formData.content_url}
+                onChange={(e) => handleUrlChange(e.target.value)}
+                placeholder={
+                  formData.content_type === "youtube"
+                    ? "https://www.youtube.com/watch?v=..."
+                    : formData.content_type === "pdf"
+                    ? "https://exemplo.com/arquivo.pdf"
+                    : "https://exemplo.com/arquivo.zip"
+                }
+                className={`bg-[#2C2C2C] border-[#3C3C3C] text-white ${
+                  formData.content_type === "youtube" ? "pl-10" : ""
+                }`}
+                required
+              />
+            </div>
             {formData.content_type === "youtube" &&
               formData.youtube_video_id && (
                 <div className="text-xs text-green-400">
-                  ✓ ID do vídeo identificado: {formData.youtube_video_id}
+                  ✓ ID do vídeo: {formData.youtube_video_id}
                 </div>
               )}
           </div>
 
-          {/* Grid para campos menores */}
+          {/* Configurações Adicionais */}
           <div className="grid grid-cols-2 gap-4">
-            {/* Duração */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-white">
                 Duração (minutos)
@@ -268,12 +313,11 @@ export function ContentForm({
                     duration_minutes: parseInt(e.target.value) || 0,
                   }))
                 }
-                placeholder="0"
+                placeholder="30"
                 className="bg-[#2C2C2C] border-[#3C3C3C] text-white"
               />
             </div>
 
-            {/* Ordem */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-white">Ordem</label>
               <Input
@@ -286,6 +330,7 @@ export function ContentForm({
                     order_index: parseInt(e.target.value) || 1,
                   }))
                 }
+                placeholder="1"
                 className="bg-[#2C2C2C] border-[#3C3C3C] text-white"
               />
             </div>
@@ -303,20 +348,23 @@ export function ContentForm({
                   is_preview: e.target.checked,
                 }))
               }
-              className="rounded border-[#3C3C3C]"
+              className="w-4 h-4 text-[#BBF717] bg-[#2C2C2C] border-[#3C3C3C] rounded focus:ring-[#BBF717]"
             />
-            <label htmlFor="is_preview" className="text-sm text-white">
-              Disponível como prévia gratuita
+            <label
+              htmlFor="is_preview"
+              className="text-sm font-medium text-white"
+            >
+              Permitir preview gratuito
             </label>
           </div>
 
-          <DialogFooter className="gap-2">
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="border-[#555] text-white bg-[#2C2C2C] hover:bg-[#3C3C3C]"
+              className="bg-[#2A2B2A] text-white hover:bg-[#3A3B3A] border-[#555]"
             >
               Cancelar
             </Button>
@@ -328,8 +376,10 @@ export function ContentForm({
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Criando...
+                  {content ? "Atualizando..." : "Criando..."}
                 </>
+              ) : content ? (
+                "Atualizar Conteúdo"
               ) : (
                 "Criar Conteúdo"
               )}
