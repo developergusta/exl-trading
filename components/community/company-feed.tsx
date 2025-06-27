@@ -86,7 +86,7 @@ export function CompanyFeed() {
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">
                     <Avatar className="w-10 h-10 flex-shrink-0">
-                      <AvatarImage src="/images/exl-logo.png" />
+                      <AvatarImage src="/images/exl-logo-quadrado.jpg" />
                       <AvatarFallback className="bg-[#BBF717] text-black text-sm font-bold">
                         EXL
                       </AvatarFallback>
@@ -181,7 +181,7 @@ export function CompanyFeed() {
                 {/* Post Header */}
                 <div className="flex items-start gap-3 mb-4">
                   <Avatar className="w-12 h-12 flex-shrink-0">
-                    <AvatarImage src="/images/exl-logo.png" />
+                    <AvatarImage src="/images/exl-logo-quadrado.jpg" />
                     <AvatarFallback className="bg-[#BBF717] text-black text-sm font-bold">
                       EXL
                     </AvatarFallback>

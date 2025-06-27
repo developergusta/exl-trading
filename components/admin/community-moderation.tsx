@@ -244,7 +244,7 @@ export function CommunityModeration() {
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex gap-3">
                     <Avatar className="w-10 h-10">
-                      <AvatarImage src="/images/exl-logo.png" />
+                      <AvatarImage src="/images/exl-logo-quadrado.jpg" />
                       <AvatarFallback className="bg-[#BBF717] text-black text-sm font-bold">
                         EXL
                       </AvatarFallback>
@@ -382,7 +382,7 @@ export function CommunityModeration() {
                     src={
                       "authorAvatar" in selectedPost
                         ? selectedPost.authorAvatar
-                        : "/images/exl-logo.png"
+                        : "/images/exl-logo-quadrado.jpg"
                     }
                   />
                   <AvatarFallback className="bg-[#BBF717] text-black text-sm font-bold">
